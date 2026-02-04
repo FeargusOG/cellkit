@@ -8,4 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
-data
+
+# Ignore top-level data directory
+/data/
