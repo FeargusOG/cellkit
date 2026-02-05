@@ -1,11 +1,16 @@
 import anndata as ad
 import argparse
-import numpy as np
 from scipy.sparse import issparse
 from cellkit.data import explore
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--adata", required=True, help="Path to the .h5ad or .zarr file")
+parser.add_argument(
+    "--layers",
+    nargs="+",
+    default=["X"],
+    help="One or more layers to summarize (use X for adata.X)",
+)
 parser.add_argument(
     "--rows", nargs="+", default=None, help="List of rows to print more details for"
 )
@@ -34,7 +39,8 @@ print("\n")
 print("********************************")
 print("*      Cell and Gene Info      *")
 print("********************************")
-explore.summarize_expression_coverage(adata)
+for layer_name in args.layers:
+    explore.summarize_expression_coverage(adata, layer=layer_name)
 
 print("\n")
 print("********************************")
@@ -104,25 +110,9 @@ else:
 print("\n")
 print("********************************")
 print("*                              *")
-print("*       X Value Summary        *")
+print("*        Value Summary         *")
 print("*                              *")
 print("********************************")
 
-if issparse(adata.X):
-    X = adata.X.tocoo()  # type: ignore[attr-defined]
-    print(f"  Non-zero entries: {X.nnz}")
-    if X.nnz == 0:
-        print("  Min (non-zero): n/a (no non-zero entries)")
-        print("  Max (non-zero): n/a (no non-zero entries)")
-        print("  Mean (non-zero): n/a (no non-zero entries)")
-        print("  Median (non-zero): n/a (no non-zero entries)")
-    else:
-        print(f"  Min (non-zero): {X.data.min()}")
-        print(f"  Max (non-zero): {X.data.max()}")
-        print(f"  Mean (non-zero): {X.data.mean():.3f}")
-        print(f"  Median (non-zero): {np.median(X.data):.3f}")  # type: ignore[attr-defined]
-else:
-    print(f"  Min: {adata.X.min()}")  # type: ignore[attr-defined]
-    print(f"  Max: {adata.X.max()}")  # type: ignore[attr-defined]
-    print(f"  Mean: {adata.X.mean():.3f}")  # type: ignore[attr-defined]
-    print(f"  Median: {np.median(adata.X):.3f}")  # type: ignore[]
+for layer_name in args.layers:
+    explore.summarize_value_stats(adata, layer=layer_name)
