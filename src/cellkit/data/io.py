@@ -6,4 +6,6 @@ def read_anndata(path):
         return ad.read_zarr(path)
     if path.endswith(".h5ad"):
         return ad.read_h5ad(path)
-    return ad.read(path)
+    if hasattr(ad, "read"):
+        return ad.read(path)
+    raise ValueError("Unsupported AnnData format; expected .h5ad or .zarr")
