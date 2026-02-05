@@ -11,7 +11,13 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-adata = ad.read_h5ad(args.adata)
+adata_path = args.adata
+if adata_path.endswith(".zarr"):
+    adata = ad.read_zarr(adata_path)
+elif adata_path.endswith(".h5ad"):
+    adata = ad.read_h5ad(adata_path)
+else:
+    adata = ad.read(adata_path)
 
 print("\n")
 print("********************************")
@@ -46,8 +52,14 @@ print("\n")
 print(adata.obs.head(3).T)  # type: ignore[attr-defined]
 
 rows = args.rows
-if rows != None:
-    for row in args.rows:
+if rows is not None:
+    missing_rows = [row for row in rows if row not in adata.obs.columns]
+    if missing_rows:
+        print("\n")
+        print(f"Warning: Missing obs columns: {missing_rows}")
+    for row in rows:
+        if row not in adata.obs.columns:
+            continue
         print("\n")
         print("\t *******************************")
         print(f"\t **    Counts: {row}    **")
@@ -83,7 +95,6 @@ else:
     print("\nAvailable layers:", list(adata.layers.keys()))
     for layer_name in adata.layers:
         layer_data = adata.layers[layer_name]
-        from scipy.sparse import issparse
 
         print(f"\nLayer: {layer_name}")
         print(f"  Shape: {layer_data.shape}")
@@ -100,10 +111,16 @@ print("********************************")
 if issparse(adata.X):
     X = adata.X.tocoo()  # type: ignore[attr-defined]
     print(f"  Non-zero entries: {X.nnz}")
-    print(f"  Min (non-zero): {X.data.min()}")
-    print(f"  Max (non-zero): {X.data.max()}")
-    print(f"  Mean (non-zero): {X.data.mean():.3f}")
-    print(f"  Median (non-zero): {np.median(X.data):.3f}")  # type: ignore[attr-defined]
+    if X.nnz == 0:
+        print("  Min (non-zero): n/a (no non-zero entries)")
+        print("  Max (non-zero): n/a (no non-zero entries)")
+        print("  Mean (non-zero): n/a (no non-zero entries)")
+        print("  Median (non-zero): n/a (no non-zero entries)")
+    else:
+        print(f"  Min (non-zero): {X.data.min()}")
+        print(f"  Max (non-zero): {X.data.max()}")
+        print(f"  Mean (non-zero): {X.data.mean():.3f}")
+        print(f"  Median (non-zero): {np.median(X.data):.3f}")  # type: ignore[attr-defined]
 else:
     print(f"  Min: {adata.X.min()}")  # type: ignore[attr-defined]
     print(f"  Max: {adata.X.max()}")  # type: ignore[attr-defined]

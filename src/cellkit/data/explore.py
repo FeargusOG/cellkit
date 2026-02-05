@@ -28,10 +28,6 @@ def summarize_expression_coverage(adata):
 
     # ---- Per-gene: cells with non-zero expression ----
     cells_per_gene = _count_nonzero(adata.X, axis=0)
-    if issparse(adata.X):
-        cells_per_gene = (adata.X > 0).sum(axis=0).A1
-    else:
-        cells_per_gene = (adata.X > 0).sum(axis=0)
 
     print("\nPer-gene expression coverage:")
     print(f"Mean cells per gene: {cells_per_gene.mean():.2f}")
