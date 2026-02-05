@@ -1,7 +1,6 @@
-import anndata as ad
 import argparse
 from scipy.sparse import issparse
-from cellkit.data import explore
+from cellkit.data import explore, io
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--adata", required=True, help="Path to the .h5ad or .zarr file")
@@ -16,13 +15,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-adata_path = args.adata
-if adata_path.endswith(".zarr"):
-    adata = ad.read_zarr(adata_path)
-elif adata_path.endswith(".h5ad"):
-    adata = ad.read_h5ad(adata_path)
-else:
-    adata = ad.read(adata_path)
+adata = io.read_anndata(args.adata)
 
 print("\n")
 print("********************************")
