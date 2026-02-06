@@ -1,5 +1,6 @@
 import numpy as np
 import anndata as ad
+import pytest
 
 from cellkit.data.util import stratified_subsample_adata
 
@@ -125,3 +126,13 @@ def test_stratified_subsample_adata_preserves_obs_index_labels():
     assert set(sub.obs.index).issubset(set(adata.obs.index))
     for label in sub.obs.index:
         assert label in adata.obs.index
+
+
+@pytest.mark.parametrize("frac", [0, -0.1, 1.1])
+def test_stratified_subsample_adata_invalid_frac(frac):
+    X = np.arange(12, dtype=float).reshape(4, 3)
+    adata = ad.AnnData(X=X)
+    adata.obs["group"] = ["a", "a", "b", "b"]
+
+    with pytest.raises(ValueError, match="frac must be in the interval"):
+        stratified_subsample_adata(adata, frac=frac, strata_cols=["group"])

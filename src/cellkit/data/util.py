@@ -22,6 +22,8 @@ def stratified_subsample_adata(
     Returns:
         AnnData: Subsampled AnnData object.
     """
+    if frac <= 0 or frac > 1:
+        raise ValueError("frac must be in the interval (0, 1].")
 
     obs_df = adata.obs.copy()
     obs_df["__index"] = obs_df.index
