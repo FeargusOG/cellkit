@@ -144,7 +144,7 @@ def test_filter_cells_and_genes_noop_inplace_false():
     X = np.arange(6, dtype=float).reshape(2, 3)
     adata = ad.AnnData(X=X)
 
-    result = filter_cells_and_genes(adata, inplace=False)
+    result = filter_cells_and_genes(adata, min_genes=None, min_cells=None, inplace=False)
 
     assert result is adata
 

@@ -62,8 +62,8 @@ def stratified_subsample_adata(
 def filter_cells_and_genes(
     adata,
     *,
-    min_genes: int | None = None,
-    min_cells: int | None = None,
+    min_genes: int | None = 100,
+    min_cells: int | None = 3,
     inplace: bool = True,
 ):
     """
