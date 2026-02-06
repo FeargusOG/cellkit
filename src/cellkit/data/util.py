@@ -1,5 +1,5 @@
 from sklearn.model_selection import train_test_split
-import numpy as np
+import scanpy as sc
 
 
 def stratified_subsample_adata(
@@ -57,3 +57,34 @@ def stratified_subsample_adata(
     )
 
     return adata[subsample_idx].copy()
+
+
+def filter_cells_and_genes(
+    adata,
+    *,
+    min_genes: int | None = None,
+    min_cells: int | None = None,
+    inplace: bool = True,
+):
+    """
+    Filter cells and/or genes based on simple expression thresholds.
+
+    If inplace=True, mutates adata and returns None.
+    If inplace=False, returns a filtered copy.
+    """
+    if min_genes is None and min_cells is None:
+        return None if inplace else adata
+    if min_genes is not None and min_genes < 0:
+        raise ValueError("min_genes must be >= 0.")
+    if min_cells is not None and min_cells < 0:
+        raise ValueError("min_cells must be >= 0.")
+
+    target = adata if inplace else adata.copy()
+
+    if min_genes is not None:
+        sc.pp.filter_cells(target, min_genes=min_genes)
+
+    if min_cells is not None:
+        sc.pp.filter_genes(target, min_cells=min_cells)
+
+    return None if inplace else target

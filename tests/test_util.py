@@ -1,8 +1,10 @@
 import numpy as np
 import anndata as ad
 import pytest
+import scanpy as sc
 
 from cellkit.data.util import stratified_subsample_adata
+from cellkit.data.util import filter_cells_and_genes
 
 
 def test_stratified_subsample_adata_basic():
@@ -136,3 +138,45 @@ def test_stratified_subsample_adata_invalid_frac(frac):
 
     with pytest.raises(ValueError, match="frac must be in the interval"):
         stratified_subsample_adata(adata, frac=frac, strata_cols=["group"])
+
+
+def test_filter_cells_and_genes_noop_inplace_false():
+    X = np.arange(6, dtype=float).reshape(2, 3)
+    adata = ad.AnnData(X=X)
+
+    result = filter_cells_and_genes(adata, inplace=False)
+
+    assert result is adata
+
+
+def test_filter_cells_and_genes_invalid_args():
+    X = np.arange(6, dtype=float).reshape(2, 3)
+    adata = ad.AnnData(X=X)
+
+    with pytest.raises(ValueError, match="min_genes must be >= 0"):
+        filter_cells_and_genes(adata, min_genes=-1)
+    with pytest.raises(ValueError, match="min_cells must be >= 0"):
+        filter_cells_and_genes(adata, min_cells=-1)
+
+
+def test_filter_cells_and_genes_calls_scanpy(monkeypatch):
+    X = np.array([[0, 1, 0], [1, 1, 0], [0, 0, 0]], dtype=float)
+    adata = ad.AnnData(X=X)
+    called = {"cells": None, "genes": None}
+
+    def fake_filter_cells(target, min_genes):
+        called["cells"] = min_genes
+
+    def fake_filter_genes(target, min_cells):
+        called["genes"] = min_cells
+
+    monkeypatch.setattr(sc.pp, "filter_cells", fake_filter_cells)
+    monkeypatch.setattr(sc.pp, "filter_genes", fake_filter_genes)
+
+    result = filter_cells_and_genes(
+        adata, min_genes=1, min_cells=1, inplace=False
+    )
+
+    assert result is not None
+    assert called["cells"] == 1
+    assert called["genes"] == 1
