@@ -96,8 +96,7 @@ def summarize_expression_coverage(adata, layer=None):
     print(f"Mean genes per cell: {genes_per_cell['mean']:.2f}")
     print(f"Median genes per cell: {genes_per_cell['median']:.2f}")
     print(
-        f"Min/Max genes per cell: "
-        f"{genes_per_cell['min']} / {genes_per_cell['max']}"
+        f"Min/Max genes per cell: " f"{genes_per_cell['min']} / {genes_per_cell['max']}"
     )
 
     # ---- Per-gene: cells with non-zero expression ----
@@ -106,8 +105,7 @@ def summarize_expression_coverage(adata, layer=None):
     print(f"Mean cells per gene: {cells_per_gene['mean']:.2f}")
     print(f"Median cells per gene: {cells_per_gene['median']:.2f}")
     print(
-        f"Min/Max cells per gene: "
-        f"{cells_per_gene['min']} / {cells_per_gene['max']}"
+        f"Min/Max cells per gene: " f"{cells_per_gene['min']} / {cells_per_gene['max']}"
     )
 
 
