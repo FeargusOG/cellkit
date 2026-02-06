@@ -135,3 +135,28 @@ def summarize_value_stats(adata, layer=None):
         print(f"  Max: {stats['max']}")
         print(f"  Mean: {stats['mean']:.3f}")
         print(f"  Median: {stats['median']:.3f}")
+
+
+def get_anndata_summary(adata):
+    """
+    Return a lightweight, machine-readable summary of an AnnData object.
+    Can be used for logging our dataset at the start of a run.
+    """
+
+    X = adata.X
+
+    summary = {
+        "n_cells": adata.n_obs,
+        "n_genes": adata.n_vars,
+        "X_type": type(X).__name__,
+        "X_is_sparse": issparse(X),
+        "layers": sorted(adata.layers.keys()),
+        "obs_columns": sorted(adata.obs.columns),
+        "var_columns": sorted(adata.var.columns),
+        "uns_keys": sorted(adata.uns.keys()),
+    }
+
+    # Optional: shape sanity
+    summary["X_shape"] = X.shape
+
+    return summary

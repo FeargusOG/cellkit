@@ -3,6 +3,7 @@ import anndata as ad
 from scipy.sparse import csr_matrix
 
 from cellkit.data.explore import compute_expression_coverage, compute_value_stats
+from cellkit.data.explore import get_anndata_summary
 
 
 def test_compute_expression_coverage_dense():
@@ -60,3 +61,26 @@ def test_missing_layer():
     result = compute_expression_coverage(adata, layer="missing")
     assert result["missing"] is True
     assert result["label"] == "missing"
+
+
+def test_get_anndata_summary_sorted_lists():
+    X = np.array([[1, 0], [0, 1]], dtype=float)
+    adata = ad.AnnData(X=X)
+    adata.obs["b"] = [1, 2]
+    adata.obs["a"] = [3, 4]
+    adata.var["z"] = [0.1, 0.2]
+    adata.var["y"] = [0.3, 0.4]
+    adata.uns["key_b"] = 1
+    adata.uns["key_a"] = 2
+    adata.layers["layer_b"] = X
+    adata.layers["layer_a"] = X
+
+    summary = get_anndata_summary(adata)
+
+    assert summary["n_cells"] == 2
+    assert summary["n_genes"] == 2
+    assert summary["X_is_sparse"] is False
+    assert summary["layers"] == ["layer_a", "layer_b"]
+    assert summary["obs_columns"] == ["a", "b"]
+    assert summary["var_columns"] == ["y", "z"]
+    assert summary["uns_keys"] == ["key_a", "key_b"]
