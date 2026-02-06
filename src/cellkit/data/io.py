@@ -9,3 +9,12 @@ def read_anndata(path):
     if hasattr(ad, "read"):
         return ad.read(path)
     raise ValueError("Unsupported AnnData format; expected .h5ad or .zarr")
+
+
+def write_anndata(adata, path):
+    if path.endswith(".zarr"):
+        adata.write_zarr(path)
+    elif path.endswith(".h5ad"):
+        adata.write_h5ad(path)
+    else:
+        adata.write(path)
