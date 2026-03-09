@@ -19,7 +19,7 @@ class TokenEmbedding(torch.nn.Module):
         return self.layers(x)
     
 class ScalarEmbedding(torch.nn.Module):
-    def __init__(self, d_model: int, dropout: float, max_value: int | None = None):
+    def __init__(self, d_model: int, dropout: float, max_value: float | None = None):
         super().__init__()
         self.layers = torch.nn.Sequential(
             torch.nn.Linear(1, d_model),
