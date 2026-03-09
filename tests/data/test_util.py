@@ -115,6 +115,17 @@ def test_stratified_subsample_adata_drop_small_strata_default():
     assert set(sub.obs["group"]) == {"a"}
 
 
+def test_stratified_subsample_adata_all_singletons_raises_clear_error():
+    X = np.arange(12, dtype=float).reshape(4, 3)
+    adata = ad.AnnData(X=X)
+    adata.obs["group"] = ["a", "b", "c", "d"]
+
+    with pytest.raises(ValueError, match="No valid strata"):
+        stratified_subsample_adata(
+            adata, frac=0.5, strata_cols=["group"], random_state=0, drop_small_strata=True
+        )
+
+
 def test_stratified_subsample_adata_preserves_obs_index_labels():
     X = np.arange(30, dtype=float).reshape(6, 5)
     adata = ad.AnnData(X=X)

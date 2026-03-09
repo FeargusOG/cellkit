@@ -52,3 +52,13 @@ def test_rmsnorm_backward_pass():
     assert model.weight.grad is not None
     assert torch.isfinite(x.grad).all()
     assert torch.isfinite(model.weight.grad).all()
+
+
+def test_rmsnorm_preserves_input_dtype_for_float16():
+    model = RMSNorm(d_model=8)
+    model.eval()
+    x = torch.randn(2, 4, 8, dtype=torch.float16)
+
+    out = model(x)
+
+    assert out.dtype == torch.float16

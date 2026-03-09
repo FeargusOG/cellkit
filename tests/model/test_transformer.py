@@ -23,6 +23,11 @@ def test_attention_raises_when_d_model_not_divisible_by_heads():
         Attention(d_model=10, heads=3)
 
 
+def test_attention_raises_when_heads_is_non_positive():
+    with pytest.raises(ValueError, match="heads must be > 0"):
+        Attention(d_model=16, heads=0)
+
+
 def test_attention_all_ones_mask_matches_no_mask():
     torch.manual_seed(0)
     model = Attention(d_model=16, heads=4)

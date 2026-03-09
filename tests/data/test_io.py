@@ -1,4 +1,5 @@
 from unittest import mock
+from pathlib import Path
 import pytest
 
 from cellkit.data.io import read_anndata
@@ -19,3 +20,13 @@ def test_read_anndata_routes_by_extension():
 
         with pytest.raises(ValueError, match="Unsupported AnnData format"):
             read_anndata("file.txt")
+
+
+def test_read_anndata_accepts_pathlike():
+    with mock.patch("cellkit.data.io.ad.read_h5ad") as read_h5ad:
+        read_h5ad.return_value = "h5ad"
+
+        result = read_anndata(Path("file.h5ad"))
+
+        assert result == "h5ad"
+        read_h5ad.assert_called_once_with(Path("file.h5ad"))
