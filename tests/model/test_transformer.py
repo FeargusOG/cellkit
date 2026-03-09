@@ -28,27 +28,27 @@ def test_attention_raises_when_heads_is_non_positive():
         Attention(d_model=16, heads=0)
 
 
-def test_attention_all_ones_mask_matches_no_mask():
-    torch.manual_seed(0)
-    model = Attention(d_model=16, heads=4)
-    model.eval()
-    x = torch.randn(2, 5, 16, dtype=torch.float32)
-    ones_mask = torch.ones(2, 5, dtype=torch.long)
-
-    out_no_mask = model(x, mask=None, causal=False)
-    out_ones_mask = model(x, mask=ones_mask, causal=False)
-
-    assert torch.allclose(out_no_mask, out_ones_mask, atol=1e-6, rtol=1e-6)
-
-
-def test_attention_all_zeros_mask_blocks_attention():
+def test_attention_all_zeros_mask_matches_no_mask():
     torch.manual_seed(0)
     model = Attention(d_model=16, heads=4)
     model.eval()
     x = torch.randn(2, 5, 16, dtype=torch.float32)
     zero_mask = torch.zeros(2, 5, dtype=torch.long)
 
-    out = model(x, mask=zero_mask, causal=False)
+    out_no_mask = model(x, mask=None, causal=False)
+    out_zero_mask = model(x, mask=zero_mask, causal=False)
+
+    assert torch.allclose(out_no_mask, out_zero_mask, atol=1e-6, rtol=1e-6)
+
+
+def test_attention_all_ones_mask_blocks_attention():
+    torch.manual_seed(0)
+    model = Attention(d_model=16, heads=4)
+    model.eval()
+    x = torch.randn(2, 5, 16, dtype=torch.float32)
+    ones_mask = torch.ones(2, 5, dtype=torch.long)
+
+    out = model(x, mask=ones_mask, causal=False)
 
     assert torch.allclose(out, torch.zeros_like(out), atol=1e-6, rtol=1e-6)
 
@@ -58,7 +58,7 @@ def test_attention_bool_and_integer_masks_are_equivalent():
     model = Attention(d_model=16, heads=4)
     model.eval()
     x = torch.randn(2, 5, 16, dtype=torch.float32)
-    int_mask = torch.tensor([[1, 1, 0, 1, 0], [1, 0, 1, 1, 1]], dtype=torch.long)
+    int_mask = torch.tensor([[0, 0, 1, 0, 1], [0, 1, 0, 0, 0]], dtype=torch.long)
     bool_mask = int_mask.bool()
 
     out_int = model(x, mask=int_mask, causal=False)
@@ -95,7 +95,7 @@ def test_transformer_forward_shape_dtype_and_finite_values():
     model = Transformer(d_model=12, layers=3, heads=3)
     model.eval()
     x = torch.randn(2, 7, 12, dtype=torch.float32)
-    mask = torch.zeros(2, 7, dtype=torch.long)
+    mask = torch.ones(2, 7, dtype=torch.long)
 
     out = model(x, mask=mask, causal=True)
 

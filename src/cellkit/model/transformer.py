@@ -43,12 +43,12 @@ class Attention(torch.nn.Module):
         # Flash Attention v2 is automatically used by PyTorch if supported by hardware.
         # Otherwise, it falls back to a fused or standard implementation.
         if mask is not None:
-            # mask is expected as (B, T) with True/1 = keep and False/0 = block.
+            # mask is expected as (B, T) with True/1 = masked and False/0 = visible.
             if mask.ndim != 2:
                 raise ValueError("mask must have shape (batch, seq_len)")
             if mask.shape != (B, T):
                 raise ValueError("mask shape must match x as (batch, seq_len)")
-            mask = mask.to(dtype=torch.bool)[:, None, None, :]  # (B, 1, 1, T)
+            mask = (~mask.to(dtype=torch.bool))[:, None, None, :]  # (B, 1, 1, T)
         attn_output = torch.nn.functional.scaled_dot_product_attention(
             q,
             k,
