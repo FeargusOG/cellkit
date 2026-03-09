@@ -2,9 +2,10 @@ import anndata as ad
 
 
 def read_anndata(path):
-    if path.endswith(".zarr"):
+    path_str = str(path)
+    if path_str.endswith(".zarr"):
         return ad.read_zarr(path)
-    if path.endswith(".h5ad"):
+    if path_str.endswith(".h5ad"):
         return ad.read_h5ad(path)
     if hasattr(ad, "read"):
         return ad.read(path)
@@ -12,9 +13,10 @@ def read_anndata(path):
 
 
 def write_anndata(adata, path):
-    if path.endswith(".zarr"):
+    path_str = str(path)
+    if path_str.endswith(".zarr"):
         adata.write_zarr(path)
-    elif path.endswith(".h5ad"):
+    elif path_str.endswith(".h5ad"):
         adata.write_h5ad(path)
     else:
         adata.write(path)

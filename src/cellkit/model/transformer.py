@@ -6,6 +6,8 @@ from cellkit.model import norm
 class Attention(torch.nn.Module):
     def __init__(self, d_model: int = 512, heads: int = 8, attn_dropout: float = 0.0):
         super().__init__()
+        if heads <= 0:
+            raise ValueError("heads must be > 0")
         if d_model % heads != 0:
             raise ValueError("d_model must be divisible by heads")
         self.d_model = d_model

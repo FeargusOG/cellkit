@@ -39,6 +39,10 @@ def stratified_subsample_adata(
                 mask = stratify_vals.isin(valid_groups)
                 obs_df = obs_df[mask]
                 stratify_vals = stratify_vals[mask]
+                if obs_df.empty:
+                    raise ValueError(
+                        "No valid strata remain after dropping small strata."
+                    )
             else:
                 print(
                     "Warning: Some strata have fewer than 2 cells. "
