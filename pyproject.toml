@@ -11,6 +11,7 @@ dependencies = [
     "scanpy>=1.10",
     "scikit-learn>=1.8.0",
     "scipy>=1.16.3",
+    "torch>=2.10.0",
 ]
 
 [dependency-groups]
