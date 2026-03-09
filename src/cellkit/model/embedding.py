@@ -4,28 +4,28 @@ class TokenEmbedding(torch.nn.Module):
     def __init__(
         self,
         num_embeddings: int,
-        embsize: int,
+        d_model: int,
         dropout: float,
         padding_idx: int,
     ):
         super().__init__()
         self.layers = torch.nn.Sequential(
-            torch.nn.Embedding(num_embeddings, embsize, padding_idx),
+            torch.nn.Embedding(num_embeddings, d_model, padding_idx),
             torch.nn.Dropout(p=dropout),
-            torch.nn.LayerNorm(embsize),
+            torch.nn.LayerNorm(d_model),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.layers(x)
     
 class ScalarEmbedding(torch.nn.Module):
-    def __init__(self, embsize: int, dropout: float, max_value: int | None = None):
+    def __init__(self, d_model: int, dropout: float, max_value: int | None = None):
         super().__init__()
         self.layers = torch.nn.Sequential(
-            torch.nn.Linear(1, embsize),
+            torch.nn.Linear(1, d_model),
             torch.nn.ReLU(),
-            torch.nn.Linear(embsize, embsize),
-            torch.nn.LayerNorm(embsize),
+            torch.nn.Linear(d_model, d_model),
+            torch.nn.LayerNorm(d_model),
             torch.nn.Dropout(p=dropout),
         )
         self.max_value = max_value
