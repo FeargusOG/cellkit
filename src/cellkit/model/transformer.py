@@ -42,7 +42,6 @@ class Attention(torch.nn.Module):
         return self.out(attn_output)
 
 class TransformerLayer(torch.nn.Module):
-
     def __init__(self, dim, heads=8):
         super().__init__()
         self.mlp = mlp.GatedMLP(dim, 4 * dim)
@@ -55,3 +54,16 @@ class TransformerLayer(torch.nn.Module):
         h = x + x_att
         out = h + self.mlp(self.norm_mlp(h))
         return out
+
+
+class Transformer(torch.nn.Module):
+    def __init__(self, dim, layers, heads=8):
+        super().__init__()
+        self.layers = torch.nn.ModuleList(
+            [TransformerLayer(dim, heads=heads) for _ in range(layers)]
+        )
+
+    def forward(self, x, mask=None, causal=False):
+        for layer in self.layers:
+            x = layer(x, mask=mask, causal=causal)
+        return x
