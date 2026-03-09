@@ -1,4 +1,5 @@
 import torch
+import pytest
 
 from cellkit.model.transformer import Attention
 from cellkit.model.transformer import Transformer
@@ -15,6 +16,11 @@ def test_attention_forward_shape_dtype_and_finite_values():
     assert out.shape == (2, 6, 16)
     assert out.dtype == torch.float32
     assert torch.isfinite(out).all()
+
+
+def test_attention_raises_when_d_model_not_divisible_by_heads():
+    with pytest.raises(ValueError, match="d_model must be divisible by heads"):
+        Attention(d_model=10, heads=3)
 
 
 def test_attention_all_ones_mask_matches_no_mask():
@@ -40,6 +46,32 @@ def test_attention_all_zeros_mask_blocks_attention():
     out = model(x, mask=zero_mask, causal=False)
 
     assert torch.allclose(out, torch.zeros_like(out), atol=1e-6, rtol=1e-6)
+
+
+def test_attention_bool_and_integer_masks_are_equivalent():
+    torch.manual_seed(0)
+    model = Attention(d_model=16, heads=4)
+    model.eval()
+    x = torch.randn(2, 5, 16, dtype=torch.float32)
+    int_mask = torch.tensor([[1, 1, 0, 1, 0], [1, 0, 1, 1, 1]], dtype=torch.long)
+    bool_mask = int_mask.bool()
+
+    out_int = model(x, mask=int_mask, causal=False)
+    out_bool = model(x, mask=bool_mask, causal=False)
+
+    assert torch.allclose(out_int, out_bool, atol=1e-6, rtol=1e-6)
+
+
+def test_attention_invalid_mask_shape_raises():
+    model = Attention(d_model=16, heads=4)
+    x = torch.randn(2, 5, 16, dtype=torch.float32)
+    wrong_rank = torch.ones(2, 1, 5, dtype=torch.bool)
+    wrong_width = torch.ones(2, 4, dtype=torch.bool)
+
+    with pytest.raises(ValueError, match="mask must have shape"):
+        model(x, mask=wrong_rank)
+    with pytest.raises(ValueError, match="mask shape must match x"):
+        model(x, mask=wrong_width)
 
 
 def test_transformer_layer_with_zeroed_weights_is_identity():

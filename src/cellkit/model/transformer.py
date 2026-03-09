@@ -4,10 +4,13 @@ from cellkit.model import norm
 
 
 class Attention(torch.nn.Module):
-    def __init__(self, d_model=512, heads=8):
+    def __init__(self, d_model: int = 512, heads: int = 8, attn_dropout: float = 0.0):
         super().__init__()
+        if d_model % heads != 0:
+            raise ValueError("d_model must be divisible by heads")
         self.d_model = d_model
         self.heads = heads
+        self.attn_dropout = attn_dropout
         self.head_dim = d_model // heads
         self.query = torch.nn.Linear(d_model, d_model, bias=False)
         self.key = torch.nn.Linear(d_model, d_model, bias=False)
@@ -21,7 +24,12 @@ class Attention(torch.nn.Module):
         ]:
             torch.nn.init.xavier_uniform_(w)
 
-    def forward(self, x, mask=None, causal=False):
+    def forward(
+        self,
+        x: torch.Tensor,
+        mask: torch.Tensor | None = None,
+        causal: bool = False,
+    ) -> torch.Tensor:
         B, T, _ = x.shape
         # Compute Q, K, V
         q = (
@@ -33,14 +41,18 @@ class Attention(torch.nn.Module):
         # Flash Attention v2 is automatically used by PyTorch if supported by hardware.
         # Otherwise, it falls back to a fused or standard implementation.
         if mask is not None:
-            # mask is (B, T) where 1 = keep and 0 = masked/blocked
-            mask = mask.bool()[:, None, None, :]  # (B, 1, 1, T)
+            # mask is expected as (B, T) with True/1 = keep and False/0 = block.
+            if mask.ndim != 2:
+                raise ValueError("mask must have shape (batch, seq_len)")
+            if mask.shape != (B, T):
+                raise ValueError("mask shape must match x as (batch, seq_len)")
+            mask = mask.to(dtype=torch.bool)[:, None, None, :]  # (B, 1, 1, T)
         attn_output = torch.nn.functional.scaled_dot_product_attention(
             q,
             k,
             v,
             attn_mask=mask,  # shape: (B, 1, T, T) or broadcastable
-            dropout_p=0.0,
+            dropout_p=self.attn_dropout if self.training else 0.0,
             is_causal=causal,
         )
         # Merge heads
@@ -49,28 +61,60 @@ class Attention(torch.nn.Module):
 
 
 class TransformerLayer(torch.nn.Module):
-    def __init__(self, d_model, heads=8):
+    def __init__(
+        self,
+        d_model: int,
+        heads: int = 8,
+        attn_dropout: float = 0.0,
+        resid_dropout: float = 0.0,
+    ):
         super().__init__()
         self.mlp = mlp.GatedMLP(d_model, 4 * d_model)
         self.norm_mlp = norm.RMSNorm(d_model)
-        self.attn = Attention(d_model, heads)
+        self.attn = Attention(d_model, heads, attn_dropout=attn_dropout)
+        self.resid_dropout = torch.nn.Dropout(resid_dropout)
         self.norm_att = norm.RMSNorm(d_model)
 
-    def forward(self, x, mask=None, causal=False):
+    def forward(
+        self,
+        x: torch.Tensor,
+        mask: torch.Tensor | None = None,
+        causal: bool = False,
+    ) -> torch.Tensor:
         x_att = self.attn(self.norm_att(x), mask, causal)
-        h = x + x_att
-        out = h + self.mlp(self.norm_mlp(h))
+        h = x + self.resid_dropout(x_att)
+        out = h + self.resid_dropout(self.mlp(self.norm_mlp(h)))
         return out
 
 
 class Transformer(torch.nn.Module):
-    def __init__(self, d_model, layers, heads=8):
+    def __init__(
+        self,
+        d_model: int,
+        layers: int,
+        heads: int = 8,
+        attn_dropout: float = 0.0,
+        resid_dropout: float = 0.0,
+    ):
         super().__init__()
         self.layers = torch.nn.ModuleList(
-            [TransformerLayer(d_model, heads=heads) for _ in range(layers)]
+            [
+                TransformerLayer(
+                    d_model,
+                    heads=heads,
+                    attn_dropout=attn_dropout,
+                    resid_dropout=resid_dropout,
+                )
+                for _ in range(layers)
+            ]
         )
 
-    def forward(self, x, mask=None, causal=False):
+    def forward(
+        self,
+        x: torch.Tensor,
+        mask: torch.Tensor | None = None,
+        causal: bool = False,
+    ) -> torch.Tensor:
         for layer in self.layers:
             x = layer(x, mask=mask, causal=causal)
         return x
