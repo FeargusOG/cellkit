@@ -7,7 +7,7 @@ from cellkit.model.transformer import TransformerLayer
 
 
 def test_attention_forward_shape_dtype_and_finite_values():
-    model = Attention(d_model=16, heads=4)
+    model = Attention(d_model=16, num_heads=4)
     model.eval()
     x = torch.randn(2, 6, 16, dtype=torch.float32)
 
@@ -19,18 +19,18 @@ def test_attention_forward_shape_dtype_and_finite_values():
 
 
 def test_attention_raises_when_d_model_not_divisible_by_heads():
-    with pytest.raises(ValueError, match="d_model must be divisible by heads"):
-        Attention(d_model=10, heads=3)
+    with pytest.raises(ValueError, match="d_model must be divisible by num_heads"):
+        Attention(d_model=10, num_heads=3)
 
 
 def test_attention_raises_when_heads_is_non_positive():
-    with pytest.raises(ValueError, match="heads must be > 0"):
-        Attention(d_model=16, heads=0)
+    with pytest.raises(ValueError, match="num_heads must be > 0"):
+        Attention(d_model=16, num_heads=0)
 
 
 def test_attention_all_zeros_mask_matches_no_mask():
     torch.manual_seed(0)
-    model = Attention(d_model=16, heads=4)
+    model = Attention(d_model=16, num_heads=4)
     model.eval()
     x = torch.randn(2, 5, 16, dtype=torch.float32)
     zero_mask = torch.zeros(2, 5, dtype=torch.long)
@@ -43,7 +43,7 @@ def test_attention_all_zeros_mask_matches_no_mask():
 
 def test_attention_all_ones_mask_blocks_attention():
     torch.manual_seed(0)
-    model = Attention(d_model=16, heads=4)
+    model = Attention(d_model=16, num_heads=4)
     model.eval()
     x = torch.randn(2, 5, 16, dtype=torch.float32)
     ones_mask = torch.ones(2, 5, dtype=torch.long)
@@ -55,7 +55,7 @@ def test_attention_all_ones_mask_blocks_attention():
 
 def test_attention_bool_and_integer_masks_are_equivalent():
     torch.manual_seed(0)
-    model = Attention(d_model=16, heads=4)
+    model = Attention(d_model=16, num_heads=4)
     model.eval()
     x = torch.randn(2, 5, 16, dtype=torch.float32)
     int_mask = torch.tensor([[0, 0, 1, 0, 1], [0, 1, 0, 0, 0]], dtype=torch.long)
@@ -68,7 +68,7 @@ def test_attention_bool_and_integer_masks_are_equivalent():
 
 
 def test_attention_invalid_mask_shape_raises():
-    model = Attention(d_model=16, heads=4)
+    model = Attention(d_model=16, num_heads=4)
     x = torch.randn(2, 5, 16, dtype=torch.float32)
     wrong_rank = torch.ones(2, 1, 5, dtype=torch.bool)
     wrong_width = torch.ones(2, 4, dtype=torch.bool)
@@ -80,7 +80,7 @@ def test_attention_invalid_mask_shape_raises():
 
 
 def test_transformer_layer_with_zeroed_weights_is_identity():
-    model = TransformerLayer(d_model=8, heads=2)
+    model = TransformerLayer(d_model=8, num_heads=2)
     model.eval()
     for param in model.parameters():
         torch.nn.init.zeros_(param)
@@ -92,7 +92,7 @@ def test_transformer_layer_with_zeroed_weights_is_identity():
 
 
 def test_transformer_forward_shape_dtype_and_finite_values():
-    model = Transformer(d_model=12, layers=3, heads=3)
+    model = Transformer(d_model=12, num_layers=3, num_heads=3)
     model.eval()
     x = torch.randn(2, 7, 12, dtype=torch.float32)
     mask = torch.ones(2, 7, dtype=torch.long)
@@ -105,7 +105,7 @@ def test_transformer_forward_shape_dtype_and_finite_values():
 
 
 def test_transformer_backward_pass():
-    model = Transformer(d_model=8, layers=2, heads=2)
+    model = Transformer(d_model=8, num_layers=2, num_heads=2)
     x = torch.randn(2, 3, 8, dtype=torch.float32, requires_grad=True)
 
     out = model(x)
