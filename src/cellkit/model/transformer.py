@@ -3,10 +3,6 @@ import mlp
 import norm
 
 class Attention(torch.nn.Module):
-    """
-    Multihead Attention Layer using PyTorch Flash Attention V2.
-    Includes rotary embeddings and optional causal/mask support.
-    """
     def __init__(self, dim=512, heads=8):
         super().__init__()
         self.dim = dim
