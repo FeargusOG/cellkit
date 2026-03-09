@@ -1,6 +1,6 @@
 import torch
-import mlp
-import norm
+from cellkit.model import mlp
+from cellkit.model import norm
 
 
 class Attention(torch.nn.Module):
@@ -33,7 +33,7 @@ class Attention(torch.nn.Module):
         # Flash Attention v2 is automatically used by PyTorch if supported by hardware.
         # Otherwise, it falls back to a fused or standard implementation.
         if mask is not None:
-            # Suppose mask is (B, T) where 1 = mask, 0 = keep
+            # mask is (B, T) where 1 = keep and 0 = masked/blocked
             mask = mask.bool()[:, None, None, :]  # (B, 1, 1, T)
         attn_output = torch.nn.functional.scaled_dot_product_attention(
             q,
