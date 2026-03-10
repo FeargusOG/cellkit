@@ -35,8 +35,8 @@ def test_attention_all_zeros_mask_matches_no_mask():
     x = torch.randn(2, 5, 16, dtype=torch.float32)
     zero_mask = torch.zeros(2, 5, dtype=torch.long)
 
-    out_no_mask = model(x, mask=None, causal=False)
-    out_zero_mask = model(x, mask=zero_mask, causal=False)
+    out_no_mask = model(x, attention_mask=None, causal=False)
+    out_zero_mask = model(x, attention_mask=zero_mask, causal=False)
 
     assert torch.allclose(out_no_mask, out_zero_mask, atol=1e-6, rtol=1e-6)
 
@@ -48,7 +48,7 @@ def test_attention_all_ones_mask_blocks_attention():
     x = torch.randn(2, 5, 16, dtype=torch.float32)
     ones_mask = torch.ones(2, 5, dtype=torch.long)
 
-    out = model(x, mask=ones_mask, causal=False)
+    out = model(x, attention_mask=ones_mask, causal=False)
 
     assert torch.allclose(out, torch.zeros_like(out), atol=1e-6, rtol=1e-6)
 
@@ -61,8 +61,8 @@ def test_attention_bool_and_integer_masks_are_equivalent():
     int_mask = torch.tensor([[0, 0, 1, 0, 1], [0, 1, 0, 0, 0]], dtype=torch.long)
     bool_mask = int_mask.bool()
 
-    out_int = model(x, mask=int_mask, causal=False)
-    out_bool = model(x, mask=bool_mask, causal=False)
+    out_int = model(x, attention_mask=int_mask, causal=False)
+    out_bool = model(x, attention_mask=bool_mask, causal=False)
 
     assert torch.allclose(out_int, out_bool, atol=1e-6, rtol=1e-6)
 
@@ -73,10 +73,10 @@ def test_attention_invalid_mask_shape_raises():
     wrong_rank = torch.ones(2, 1, 5, dtype=torch.bool)
     wrong_width = torch.ones(2, 4, dtype=torch.bool)
 
-    with pytest.raises(ValueError, match="mask must have shape"):
-        model(x, mask=wrong_rank)
-    with pytest.raises(ValueError, match="mask shape must match x"):
-        model(x, mask=wrong_width)
+    with pytest.raises(ValueError, match="attention_mask must have shape"):
+        model(x, attention_mask=wrong_rank)
+    with pytest.raises(ValueError, match="attention_mask shape must match x"):
+        model(x, attention_mask=wrong_width)
 
 
 def test_transformer_layer_with_zeroed_weights_is_identity():
@@ -95,9 +95,9 @@ def test_transformer_forward_shape_dtype_and_finite_values():
     model = Transformer(d_model=12, num_layers=3, num_heads=3)
     model.eval()
     x = torch.randn(2, 7, 12, dtype=torch.float32)
-    mask = torch.ones(2, 7, dtype=torch.long)
+    attention_mask = torch.ones(2, 7, dtype=torch.long)
 
-    out = model(x, mask=mask, causal=True)
+    out = model(x, attention_mask=attention_mask, causal=True)
 
     assert out.shape == (2, 7, 12)
     assert out.dtype == torch.float32

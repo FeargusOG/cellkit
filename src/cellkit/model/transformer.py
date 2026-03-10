@@ -45,16 +45,18 @@ class Attention(torch.nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        mask: torch.Tensor | None = None,
+        attention_mask: torch.Tensor | None = None,
         causal: bool = False,
     ) -> torch.Tensor:
-        """Apply self-attention to ``x`` with an optional boolean mask.
+        """Apply self-attention to ``x`` with an optional attention mask.
 
         Args:
             x: Input tensor with shape ``(batch, seq_len, d_model)``.
-            mask: Optional tensor with shape ``(batch, seq_len)`` where ``True`` marks
-                positions that should be masked out.
-            causal: Whether to apply causal masking in addition to the provided mask.
+            attention_mask: Optional tensor with shape ``(batch, seq_len)`` where
+                ``True`` marks positions that should be fully ignored by attention,
+                for example padded positions.
+            causal: Whether to apply causal masking in addition to the provided
+                attention mask.
 
         Returns:
             Tensor with shape ``(batch, seq_len, d_model)``.
@@ -79,18 +81,22 @@ class Attention(torch.nn.Module):
         # Flash Attention (scaled_dot_product_attention)
         # Flash Attention v2 is automatically used by PyTorch if supported by hardware.
         # Otherwise, it falls back to a fused or standard implementation.
-        if mask is not None:
-            # mask is expected as (B, T) with True/1 = masked and False/0 = visible.
-            if mask.ndim != 2:
-                raise ValueError("mask must have shape (batch, seq_len)")
-            if mask.shape != (batch_size, seq_len):
-                raise ValueError("mask shape must match x as (batch, seq_len)")
-            mask = (~mask.to(dtype=torch.bool))[:, None, None, :]  # (B, 1, 1, T)
+        if attention_mask is not None:
+            # True/1 marks positions that should be fully ignored by attention.
+            if attention_mask.ndim != 2:
+                raise ValueError("attention_mask must have shape (batch, seq_len)")
+            if attention_mask.shape != (batch_size, seq_len):
+                raise ValueError(
+                    "attention_mask shape must match x as (batch, seq_len)"
+                )
+            attention_mask = (~attention_mask.to(dtype=torch.bool))[
+                :, None, None, :
+            ]  # (B, 1, 1, T)
         attn_output = torch.nn.functional.scaled_dot_product_attention(
             q,
             k,
             v,
-            attn_mask=mask,  # shape: (B, 1, T, T) or broadcastable
+            attn_mask=attention_mask,  # shape: (B, 1, T, T) or broadcastable
             dropout_p=self.attn_dropout if self.training else 0.0,
             is_causal=causal,
         )
@@ -131,28 +137,29 @@ class TransformerLayer(torch.nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        mask: torch.Tensor | None = None,
+        attention_mask: torch.Tensor | None = None,
         causal: bool = False,
     ) -> torch.Tensor:
         """Apply attention and feed-forward sublayers with residual connections.
 
         Args:
             x: Hidden states with shape ``(batch, seq_len, d_model)``.
-            mask: Optional tensor with shape ``(batch, seq_len)`` where ``True`` marks
-                positions that should be masked out.
+            attention_mask: Optional tensor with shape ``(batch, seq_len)`` where
+                ``True`` marks positions that should be fully ignored by attention,
+                for example padded positions.
             causal: Whether to apply causal masking in the attention block.
 
         Returns:
             Tensor with shape ``(batch, seq_len, d_model)``.
         """
-        x_att = self.attn(self.norm_att(x), mask, causal)
+        x_att = self.attn(self.norm_att(x), attention_mask, causal)
         h = x + self.resid_dropout(x_att)
         out = h + self.resid_dropout(self.mlp(self.norm_mlp(h)))
         return out
 
 
 class Transformer(torch.nn.Module):
-    """Stack of transformer layers sharing a common mask and causal setting."""
+    """Stack of transformer layers sharing a common attention mask and causal setting."""
 
     def __init__(
         self,
@@ -187,20 +194,21 @@ class Transformer(torch.nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        mask: torch.Tensor | None = None,
+        attention_mask: torch.Tensor | None = None,
         causal: bool = False,
     ) -> torch.Tensor:
         """Run the input sequence through each transformer layer in order.
 
         Args:
             x: Hidden states with shape ``(batch, seq_len, d_model)``.
-            mask: Optional tensor with shape ``(batch, seq_len)`` where ``True`` marks
-                positions that should be masked out.
+            attention_mask: Optional tensor with shape ``(batch, seq_len)`` where
+                ``True`` marks positions that should be fully ignored by attention,
+                for example padded positions.
             causal: Whether to apply causal masking in every layer.
 
         Returns:
             Tensor with shape ``(batch, seq_len, d_model)`` after all layers.
         """
         for layer in self.layers:
-            x = layer(x, mask=mask, causal=causal)
+            x = layer(x, attention_mask=attention_mask, causal=causal)
         return x
