@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from os import PathLike
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import anndata as ad
 import numpy as np
@@ -138,7 +138,8 @@ class ZarrReader(AnnDataReader):
 
     def _open(self) -> Any:
         """Open the ``.zarr`` store lazily."""
-        return ad_experimental.read_lazy(self.path)
+        read_lazy = cast(Any, ad_experimental.read_lazy)
+        return read_lazy(self.path)
 
 
 def open_reader(path: str | PathLike[str]) -> DataReader:
