@@ -17,10 +17,6 @@ class DataReader(ABC):
     """Interface for lazily reading indexed samples from disk-backed datasets."""
 
     @abstractmethod
-    def clone(self) -> "DataReader":
-        """Return a new unopened reader with the same configuration."""
-
-    @abstractmethod
     def __len__(self) -> int:
         """Return the number of samples available through the reader."""
 
@@ -53,10 +49,6 @@ class AnnDataReader(DataReader, ABC):
         """
         self.path = Path(path)
         self._adata: Any | None = None
-
-    def clone(self) -> "AnnDataReader":
-        """Return a new unopened reader of the same type."""
-        return type(self)(self.path)
 
     def __len__(self) -> int:
         """Return the number of observations in the dataset."""
@@ -113,6 +105,12 @@ class AnnDataReader(DataReader, ABC):
         if file_manager is not None and hasattr(file_manager, "close"):
             file_manager.close()
         self._adata = None
+
+    def __getstate__(self) -> dict[str, Any]:
+        """Drop open AnnData handles before pickling the reader."""
+        state = self.__dict__.copy()
+        state["_adata"] = None
+        return state
 
     def _ensure_open(self) -> Any:
         """Open the AnnData object on first access and cache it locally."""

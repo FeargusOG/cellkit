@@ -1,4 +1,5 @@
 from pathlib import Path
+import pickle
 from unittest import mock
 
 import numpy as np
@@ -63,3 +64,16 @@ def test_zarr_reader_uses_lazy_open():
         assert reader.read_obs(2, columns=["batch"]) == {"batch": 1}
 
         read_lazy.assert_called_once_with(Path("dataset.zarr"))
+
+
+def test_reader_pickling_drops_open_anndata_handle():
+    fake_adata = FakeAnnData()
+    with mock.patch("cellkit.data.reader.ad.read_h5ad", return_value=fake_adata):
+        reader = H5ADReader("dataset.h5ad")
+        assert len(reader) == 3
+
+        restored = pickle.loads(pickle.dumps(reader))
+
+        fake_adata.file.close.assert_not_called()
+        assert reader._adata is fake_adata
+        assert restored._adata is None
