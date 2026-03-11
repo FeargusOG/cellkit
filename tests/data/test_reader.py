@@ -4,12 +4,10 @@ from unittest import mock
 
 import numpy as np
 import pandas as pd
-import pytest
 from scipy import sparse
 
 from cellkit.data.reader import H5ADReader
 from cellkit.data.reader import ZarrReader
-from cellkit.data.reader import open_reader
 
 
 class FakeAnnData:
@@ -26,15 +24,6 @@ class FakeAnnData:
         self.n_obs = 3
         self.n_vars = 4
         self.file = mock.Mock()
-
-
-def test_open_reader_routes_by_extension():
-    assert isinstance(open_reader("dataset.h5ad"), H5ADReader)
-    assert isinstance(open_reader(Path("dataset.zarr")), ZarrReader)
-
-    with pytest.raises(ValueError, match="Unsupported dataset format"):
-        open_reader("dataset.txt")
-
 
 def test_h5ad_reader_uses_backed_mode_and_reads_rows():
     fake_adata = FakeAnnData()

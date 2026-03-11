@@ -164,24 +164,3 @@ class ZarrReader(AnnDataReader):
     def _open(self) -> ad.AnnData:
         """Open the ``.zarr`` store lazily."""
         return ad_experimental.read_lazy(self.path) # pyright: ignore[reportCallIssue]
-
-
-def open_reader(path: str | PathLike[str]) -> DataReader:
-    """Create a reader instance based on the dataset file extension.
-
-    Args:
-        path: Filesystem path to a supported AnnData-backed store.
-
-    Returns:
-        Reader instance configured for the detected storage format.
-
-    Raises:
-        ValueError: If the file extension is not supported.
-    """
-    path_obj = Path(path)
-    suffix = path_obj.suffix.lower()
-    if suffix == ".h5ad":
-        return H5ADReader(path_obj)
-    if suffix == ".zarr":
-        return ZarrReader(path_obj)
-    raise ValueError("Unsupported dataset format; expected .h5ad or .zarr")
