@@ -10,7 +10,6 @@ from typing import Any
 import anndata as ad
 import numpy as np
 from anndata import experimental as ad_experimental
-from scipy import sparse
 
 
 class DataReader(ABC):
@@ -29,6 +28,11 @@ class DataReader(ABC):
     @abstractmethod
     def var_names(self) -> list[str]:
         """Return feature names in dataset order."""
+
+    @property
+    @abstractmethod
+    def obs_columns(self) -> list[str]:
+        """Return available observation metadata columns."""
 
     @abstractmethod
     def read_x(self, index: int, layer: str | None = None) -> np.ndarray:
@@ -70,6 +74,11 @@ class AnnDataReader(DataReader, ABC):
         """Return feature names in dataset order."""
         return [str(name) for name in self._ensure_open().var_names]
 
+    @property
+    def obs_columns(self) -> list[str]:
+        """Return available observation metadata columns."""
+        return [str(column) for column in self._ensure_open().obs.columns]
+
     def read_x(self, index: int, layer: str | None = None) -> np.ndarray:
         """Read one feature row from ``X`` or from a named layer.
 
@@ -94,8 +103,12 @@ class AnnDataReader(DataReader, ABC):
         if callable(to_array):
             row = to_array()
         row = np.asarray(row)
-        if row.ndim > 1:
-            row = np.squeeze(row, axis=0)
+        if row.ndim == 2:
+            if row.shape[0] != 1:
+                raise ValueError(f"Expected a single row, got shape {row.shape}")
+            row = row[0]
+        elif row.ndim != 1:
+            raise ValueError(f"Expected a 1D row, got shape {row.shape}")
         return row
 
     def read_obs(self, index: int, columns: list[str] | None = None) -> dict[str, Any]:

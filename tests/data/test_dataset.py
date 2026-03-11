@@ -26,6 +26,10 @@ class FakeReader(DataReader):
     def var_names(self) -> list[str]:
         return [f"feature_{index}" for index in range(len(self.rows[0]))]
 
+    @property
+    def obs_columns(self) -> list[str]:
+        return [str(column) for column in self.obs_rows[0].keys()]
+
     def read_x(self, index: int, layer: str | None = None):
         return self.rows[index]
 
