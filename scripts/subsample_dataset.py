@@ -1,13 +1,34 @@
 import argparse
 import sys
 from pathlib import Path
+import anndata as ad
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from cellkit.data import io, util
+from cellkit.data import util
+
+def read_anndata(path):
+    path_str = str(path)
+    if path_str.endswith(".zarr"):
+        return ad.read_zarr(path)
+    if path_str.endswith(".h5ad"):
+        return ad.read_h5ad(path)
+    if hasattr(ad, "read"):
+        return ad.read(path)
+    raise ValueError("Unsupported AnnData format; expected .h5ad or .zarr")
+
+
+def write_anndata(adata, path):
+    path_str = str(path)
+    if path_str.endswith(".zarr"):
+        adata.write_zarr(path)
+    elif path_str.endswith(".h5ad"):
+        adata.write_h5ad(path)
+    else:
+        adata.write(path)
 
 
 parser = argparse.ArgumentParser()
@@ -33,7 +54,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-adata = io.read_anndata(args.adata)
+adata = read_anndata(args.adata)
 sub = util.stratified_subsample_adata(
     adata,
     frac=args.frac,
@@ -41,7 +62,7 @@ sub = util.stratified_subsample_adata(
     random_state=args.random_state,
     drop_small_strata=args.drop_small_strata,
 )
-io.write_anndata(sub, args.out)
+write_anndata(sub, args.out)
 
 print(f"Wrote subsampled AnnData to {args.out}")
 print(f"Original cells: {adata.n_obs}")

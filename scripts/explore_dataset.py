@@ -2,12 +2,33 @@ import argparse
 import sys
 from pathlib import Path
 from scipy.sparse import issparse
+import anndata as ad
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
-from cellkit.data import explore, io
+from cellkit.data import explore
+
+def read_anndata(path):
+    path_str = str(path)
+    if path_str.endswith(".zarr"):
+        return ad.read_zarr(path)
+    if path_str.endswith(".h5ad"):
+        return ad.read_h5ad(path)
+    if hasattr(ad, "read"):
+        return ad.read(path)
+    raise ValueError("Unsupported AnnData format; expected .h5ad or .zarr")
+
+
+def write_anndata(adata, path):
+    path_str = str(path)
+    if path_str.endswith(".zarr"):
+        adata.write_zarr(path)
+    elif path_str.endswith(".h5ad"):
+        adata.write_h5ad(path)
+    else:
+        adata.write(path)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--adata", required=True, help="Path to the .h5ad or .zarr file")
@@ -22,7 +43,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-adata = io.read_anndata(args.adata)
+adata = read_anndata(args.adata)
 
 print("\n")
 print("********************************")
