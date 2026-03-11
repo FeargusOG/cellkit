@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from os import PathLike
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import anndata as ad
 import numpy as np
@@ -48,7 +48,7 @@ class AnnDataReader(DataReader, ABC):
             path: Filesystem path to a ``.h5ad`` or ``.zarr`` dataset.
         """
         self.path = Path(path)
-        self._adata: Any | None = None
+        self._adata: ad.AnnData | None = None
 
     def __len__(self) -> int:
         """Return the number of observations in the dataset."""
@@ -72,11 +72,15 @@ class AnnDataReader(DataReader, ABC):
         """
         adata = self._ensure_open()
         matrix = adata.X if layer is None else adata.layers[layer]
+        if matrix is None:
+            raise ValueError("Requested matrix is missing")
         row = matrix[index]
-        if hasattr(row, "to_memory"):
-            row = row.to_memory()
-        if sparse.issparse(row):
-            row = row.toarray()
+        to_memory = getattr(row, "to_memory", None)
+        if callable(to_memory):
+            row = to_memory()
+        to_array = getattr(row, "toarray", None)
+        if callable(to_array):
+            row = to_array()
         row = np.asarray(row)
         if row.ndim > 1:
             row = np.squeeze(row, axis=0)
@@ -92,10 +96,21 @@ class AnnDataReader(DataReader, ABC):
         Returns:
             Dictionary mapping column names to scalar values.
         """
-        obs_row = self._ensure_open().obs.iloc[index]
-        if columns is not None:
-            obs_row = obs_row.loc[columns]
-        return obs_row.to_dict()
+        obs = self._ensure_open().obs
+        if columns is None:
+            selected_obs = obs
+        else:
+            selected_obs = obs[columns]
+
+        obs_row = selected_obs.iloc[index]
+
+        to_pandas = getattr(obs_row, "to_pandas", None)
+        if callable(to_pandas):
+            obs_row = to_pandas()
+
+        values = np.asarray(obs_row).reshape(-1)
+        column_names = [str(column) for column in selected_obs.columns]
+        return dict(zip(column_names, values, strict=True))
 
     def close(self) -> None:
         """Close any open backing store if the current AnnData object exposes one."""
@@ -112,21 +127,21 @@ class AnnDataReader(DataReader, ABC):
         state["_adata"] = None
         return state
 
-    def _ensure_open(self) -> Any:
+    def _ensure_open(self) -> ad.AnnData:
         """Open the AnnData object on first access and cache it locally."""
         if self._adata is None:
             self._adata = self._open()
         return self._adata
 
     @abstractmethod
-    def _open(self) -> Any:
+    def _open(self) -> ad.AnnData:
         """Open the backing AnnData store lazily."""
 
 
 class H5ADReader(AnnDataReader):
     """Reader for ``.h5ad`` files using backed read mode."""
 
-    def _open(self) -> Any:
+    def _open(self) -> ad.AnnData:
         """Open the ``.h5ad`` file without materializing the full matrix."""
         return ad.read_h5ad(self.path, backed="r")
 
@@ -134,10 +149,9 @@ class H5ADReader(AnnDataReader):
 class ZarrReader(AnnDataReader):
     """Reader for ``.zarr`` AnnData stores using lazy loading."""
 
-    def _open(self) -> Any:
+    def _open(self) -> ad.AnnData:
         """Open the ``.zarr`` store lazily."""
-        read_lazy = cast(Any, ad_experimental.read_lazy)
-        return read_lazy(self.path)
+        return ad_experimental.read_lazy(self.path) # pyright: ignore[reportCallIssue]
 
 
 def open_reader(path: str | PathLike[str]) -> DataReader:
