@@ -40,6 +40,11 @@ class DataReader(ABC):
     def obs_names(self) -> list[str]:
         """Return observation names in dataset order."""
 
+    @property
+    @abstractmethod
+    def layer_names(self) -> list[str]:
+        """Return available matrix layer names."""
+
     @abstractmethod
     def read_x(self, index: int, layer: str | None = None) -> np.ndarray:
         """Read one feature row from ``X`` or from a named layer."""
@@ -89,6 +94,11 @@ class AnnDataReader(DataReader, ABC):
     def obs_names(self) -> list[str]:
         """Return observation names in dataset order."""
         return [str(name) for name in self._ensure_open().obs_names]
+
+    @property
+    def layer_names(self) -> list[str]:
+        """Return available matrix layer names."""
+        return [str(name) for name in self._ensure_open().layers.keys()]
 
     def read_x(self, index: int, layer: str | None = None) -> np.ndarray:
         """Read one feature row from ``X`` or from a named layer.

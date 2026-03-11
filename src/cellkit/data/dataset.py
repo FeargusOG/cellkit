@@ -46,12 +46,16 @@ class AnnDataDataset(torch.utils.data.Dataset):
 
         preview_reader = self.reader_factory()
         try:
+            dataset_length = len(preview_reader)
             if indices is None:
                 self.indices = None
-                self._length = len(preview_reader)
+                self._length = dataset_length
             else:
                 self.indices = list(indices)
                 self._length = len(self.indices)
+                self._validate_indices(self.indices, dataset_length)
+
+            self._validate_schema(preview_reader)
         finally:
             preview_reader.close()
 
@@ -122,3 +126,33 @@ class AnnDataDataset(torch.utils.data.Dataset):
     def _to_tensor(x: np.ndarray) -> torch.Tensor:
         """Convert one dense feature row to a PyTorch tensor."""
         return torch.as_tensor(np.asarray(x))
+
+    @staticmethod
+    def _validate_indices(indices: list[int], dataset_length: int) -> None:
+        """Validate source indices against the available dataset length."""
+        for source_index in indices:
+            if source_index < 0 or source_index >= dataset_length:
+                raise ValueError(
+                    f"indices must be within [0, {dataset_length}), got {source_index}"
+                )
+
+    def _validate_schema(self, reader: DataReader) -> None:
+        """Validate requested layer and observation metadata names."""
+        if self.layer is not None and self.layer not in reader.layer_names:
+            raise ValueError(f"Unknown layer '{self.layer}'")
+
+        available_obs_columns = set(reader.obs_columns)
+        if self.obs_columns is not None:
+            missing_columns = [
+                column
+                for column in self.obs_columns
+                if column not in available_obs_columns
+            ]
+            if missing_columns:
+                raise ValueError(f"Unknown obs columns: {missing_columns}")
+
+        if (
+            self.target_column is not None
+            and self.target_column not in available_obs_columns
+        ):
+            raise ValueError(f"Unknown target_column '{self.target_column}'")

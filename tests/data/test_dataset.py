@@ -31,6 +31,10 @@ class FakeReader(DataReader):
     def obs_names(self) -> list[str]:
         return [f"obs_{index}" for index in range(len(self.rows))]
 
+    @property
+    def layer_names(self) -> list[str]:
+        return ["counts"]
+
     def read_x(self, index: int, layer: str | None = None):
         self.read_x_calls.append((index, layer))
         return self.rows[index]
@@ -237,6 +241,62 @@ def test_anndata_dataset_passes_layer_through_to_reader():
     runtime_reader = cast(FakeReader, dataset._reader)
     assert runtime_reader is not None
     assert runtime_reader.read_x_calls == [(1, "counts")]
+
+
+def test_anndata_dataset_rejects_out_of_range_source_indices_at_init():
+    reader_factory = FakeReaderFactory(
+        rows=[[1.0, 2.0], [3.0, 4.0]],
+        obs_rows=[{"target": 0}, {"target": 1}],
+    )
+
+    try:
+        AnnDataDataset(reader_factory, indices=[0, 2], target_column="target")
+    except ValueError as exc:
+        assert "indices must be within [0, 2), got 2" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError")
+
+
+def test_anndata_dataset_rejects_unknown_obs_columns_at_init():
+    reader_factory = FakeReaderFactory(
+        rows=[[1.0, 2.0]],
+        obs_rows=[{"target": 0, "cell_type": "t"}],
+    )
+
+    try:
+        AnnDataDataset(reader_factory, obs_columns=["missing"], target_column="target")
+    except ValueError as exc:
+        assert "Unknown obs columns: ['missing']" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError")
+
+
+def test_anndata_dataset_rejects_unknown_target_column_at_init():
+    reader_factory = FakeReaderFactory(
+        rows=[[1.0, 2.0]],
+        obs_rows=[{"cell_type": "t"}],
+    )
+
+    try:
+        AnnDataDataset(reader_factory, target_column="missing")
+    except ValueError as exc:
+        assert "Unknown target_column 'missing'" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError")
+
+
+def test_anndata_dataset_rejects_unknown_layer_at_init():
+    reader_factory = FakeReaderFactory(
+        rows=[[1.0, 2.0]],
+        obs_rows=[{"target": 0}],
+    )
+
+    try:
+        AnnDataDataset(reader_factory, target_column="target", layer="missing")
+    except ValueError as exc:
+        assert "Unknown layer 'missing'" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError")
 
 
 def test_anndata_dataset_works_with_multi_worker_dataloader():
