@@ -4,6 +4,7 @@ from unittest import mock
 
 import numpy as np
 import pandas as pd
+import pytest
 from scipy import sparse
 
 from cellkit.data.reader import H5ADReader
@@ -20,10 +21,17 @@ class FakeAnnData:
             {"cell_type": ["a", "b", "c"], "batch": [0, 1, 1]},
             index=["cell0", "cell1", "cell2"],
         )
+        self.obs_names = self.obs.index
         self.var_names = pd.Index(["gene_b", "gene_a", "gene_c"])
         self.n_obs = 3
         self.n_vars = 4
         self.file = mock.Mock()
+
+
+class BadRowMatrix:
+    def __getitem__(self, index):
+        return np.arange(6, dtype=np.float32).reshape(2, 3)
+
 
 def test_h5ad_reader_uses_backed_mode_and_reads_rows():
     fake_adata = FakeAnnData()
@@ -34,6 +42,7 @@ def test_h5ad_reader_uses_backed_mode_and_reads_rows():
         assert reader.shape == (3, 4)
         assert reader.var_names == ["gene_b", "gene_a", "gene_c"]
         assert reader.obs_columns == ["cell_type", "batch"]
+        assert reader.obs_names == ["cell0", "cell1", "cell2"]
         np.testing.assert_array_equal(reader.read_x(1), np.array([4, 5, 6, 7]))
         np.testing.assert_array_equal(
             reader.read_x(2, layer="counts"), np.array([8, 9, 10, 11], dtype=np.float32)
@@ -54,10 +63,48 @@ def test_zarr_reader_uses_lazy_open():
 
         assert reader.var_names == ["gene_b", "gene_a", "gene_c"]
         assert reader.obs_columns == ["cell_type", "batch"]
+        assert reader.obs_names == ["cell0", "cell1", "cell2"]
         np.testing.assert_array_equal(reader.read_x(0), np.array([0, 1, 2, 3]))
         assert reader.read_obs(2, columns=["batch"]) == {"batch": 1}
+        assert reader.read_obs(1, columns=["batch", "cell_type"]) == {
+            "batch": 1,
+            "cell_type": "b",
+        }
 
         read_lazy.assert_called_once_with(Path("dataset.zarr"))
+
+
+def test_reader_raises_when_x_is_missing():
+    fake_adata = FakeAnnData()
+    fake_adata.X = None
+    with mock.patch("cellkit.data.reader.ad.read_h5ad", return_value=fake_adata):
+        reader = H5ADReader("dataset.h5ad")
+
+        with pytest.raises(ValueError, match="Requested matrix is missing"):
+            reader.read_x(0)
+
+
+def test_reader_raises_when_row_shape_is_unexpected():
+    fake_adata = FakeAnnData()
+    fake_adata.X = BadRowMatrix()
+    with mock.patch("cellkit.data.reader.ad.read_h5ad", return_value=fake_adata):
+        reader = H5ADReader("dataset.h5ad")
+
+        with pytest.raises(ValueError, match="Expected a single row"):
+            reader.read_x(0)
+
+
+def test_reader_close_is_idempotent():
+    fake_adata = FakeAnnData()
+    with mock.patch("cellkit.data.reader.ad.read_h5ad", return_value=fake_adata):
+        reader = H5ADReader("dataset.h5ad")
+        assert len(reader) == 3
+
+        reader.close()
+        reader.close()
+
+        fake_adata.file.close.assert_called_once()
+        assert reader._adata is None
 
 
 def test_reader_pickling_drops_open_anndata_handle():
@@ -71,3 +118,12 @@ def test_reader_pickling_drops_open_anndata_handle():
         fake_adata.file.close.assert_not_called()
         assert reader._adata is fake_adata
         assert restored._adata is None
+
+
+def test_unopened_reader_pickling_preserves_lazy_state():
+    reader = H5ADReader("dataset.h5ad")
+
+    restored = pickle.loads(pickle.dumps(reader))
+
+    assert reader._adata is None
+    assert restored._adata is None
