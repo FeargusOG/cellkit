@@ -22,6 +22,10 @@ class FakeReader(DataReader):
     def shape(self) -> tuple[int, int]:
         return len(self.rows), len(self.rows[0])
 
+    @property
+    def var_names(self) -> list[str]:
+        return [f"feature_{index}" for index in range(len(self.rows[0]))]
+
     def read_x(self, index: int, layer: str | None = None):
         return self.rows[index]
 

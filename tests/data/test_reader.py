@@ -22,6 +22,7 @@ class FakeAnnData:
             {"cell_type": ["a", "b", "c"], "batch": [0, 1, 1]},
             index=["cell0", "cell1", "cell2"],
         )
+        self.var_names = pd.Index(["gene_b", "gene_a", "gene_c"])
         self.n_obs = 3
         self.n_vars = 4
         self.file = mock.Mock()
@@ -42,6 +43,7 @@ def test_h5ad_reader_uses_backed_mode_and_reads_rows():
 
         assert len(reader) == 3
         assert reader.shape == (3, 4)
+        assert reader.var_names == ["gene_b", "gene_a", "gene_c"]
         np.testing.assert_array_equal(reader.read_x(1), np.array([4, 5, 6, 7]))
         np.testing.assert_array_equal(
             reader.read_x(2, layer="counts"), np.array([8, 9, 10, 11], dtype=np.float32)
@@ -60,6 +62,7 @@ def test_zarr_reader_uses_lazy_open():
     ) as read_lazy:
         reader = ZarrReader("dataset.zarr")
 
+        assert reader.var_names == ["gene_b", "gene_a", "gene_c"]
         np.testing.assert_array_equal(reader.read_x(0), np.array([0, 1, 2, 3]))
         assert reader.read_obs(2, columns=["batch"]) == {"batch": 1}
 

@@ -25,6 +25,11 @@ class DataReader(ABC):
     def shape(self) -> tuple[int, int]:
         """Return the dataset shape as ``(num_rows, num_features)``."""
 
+    @property
+    @abstractmethod
+    def var_names(self) -> list[str]:
+        """Return feature names in dataset order."""
+
     @abstractmethod
     def read_x(self, index: int, layer: str | None = None) -> np.ndarray:
         """Read one feature row from ``X`` or from a named layer."""
@@ -60,6 +65,11 @@ class AnnDataReader(DataReader, ABC):
         adata = self._ensure_open()
         return int(adata.n_obs), int(adata.n_vars)
 
+    @property
+    def var_names(self) -> list[str]:
+        """Return feature names in dataset order."""
+        return [str(name) for name in self._ensure_open().var_names]
+
     def read_x(self, index: int, layer: str | None = None) -> np.ndarray:
         """Read one feature row from ``X`` or from a named layer.
 
@@ -68,7 +78,9 @@ class AnnDataReader(DataReader, ABC):
             layer: Optional layer name. If omitted, reads from ``adata.X``.
 
         Returns:
-            Dense one-dimensional NumPy array containing the requested row.
+            Dense one-dimensional NumPy array containing the requested row. The
+            returned dtype is preserved from the underlying stored data rather than
+            coerced to a fixed dtype such as ``float32``.
         """
         adata = self._ensure_open()
         matrix = adata.X if layer is None else adata.layers[layer]
