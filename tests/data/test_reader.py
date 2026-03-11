@@ -1,5 +1,6 @@
 from pathlib import Path
 import pickle
+from typing import Any
 from unittest import mock
 
 import numpy as np
@@ -13,7 +14,7 @@ from cellkit.data.reader import ZarrReader
 
 class FakeAnnData:
     def __init__(self):
-        self.X = np.arange(12, dtype=np.float32).reshape(3, 4)
+        self.X: Any = np.arange(12, dtype=np.float32).reshape(3, 4)
         self.layers = {
             "counts": sparse.csr_matrix(np.arange(12, dtype=np.float32).reshape(3, 4))
         }
