@@ -45,13 +45,15 @@ class AnnDataDataset(torch.utils.data.Dataset):
         self._reader: DataReader | None = None
 
         preview_reader = self.reader_factory()
-        if indices is None:
-            self.indices = None
-            self._length = len(preview_reader)
-        else:
-            self.indices = list(indices)
-            self._length = len(self.indices)
-        preview_reader.close()
+        try:
+            if indices is None:
+                self.indices = None
+                self._length = len(preview_reader)
+            else:
+                self.indices = list(indices)
+                self._length = len(self.indices)
+        finally:
+            preview_reader.close()
 
         if self.obs_columns is not None and target_column is not None:
             if target_column in self.obs_columns:
