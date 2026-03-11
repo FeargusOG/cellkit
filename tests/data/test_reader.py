@@ -10,6 +10,8 @@ from scipy import sparse
 
 from cellkit.data.reader import H5ADReader
 from cellkit.data.reader import ZarrReader
+from cellkit.data.reader import make_h5ad_reader_factory
+from cellkit.data.reader import make_zarr_reader_factory
 
 
 class FakeAnnData:
@@ -128,3 +130,29 @@ def test_unopened_reader_pickling_preserves_lazy_state():
 
     assert reader._adata is None
     assert restored._adata is None
+
+
+def test_make_h5ad_reader_factory_creates_new_readers():
+    factory = make_h5ad_reader_factory("dataset.h5ad")
+
+    first = factory()
+    second = factory()
+
+    assert isinstance(first, H5ADReader)
+    assert isinstance(second, H5ADReader)
+    assert first is not second
+    assert first.path == Path("dataset.h5ad")
+    assert second.path == Path("dataset.h5ad")
+
+
+def test_make_zarr_reader_factory_creates_new_readers():
+    factory = make_zarr_reader_factory("dataset.zarr")
+
+    first = factory()
+    second = factory()
+
+    assert isinstance(first, ZarrReader)
+    assert isinstance(second, ZarrReader)
+    assert first is not second
+    assert first.path == Path("dataset.zarr")
+    assert second.path == Path("dataset.zarr")

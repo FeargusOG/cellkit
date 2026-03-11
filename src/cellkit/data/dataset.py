@@ -15,7 +15,7 @@ class AnnDataDataset(torch.utils.data.Dataset):
 
     def __init__(
         self,
-        reader: DataReader,
+        reader_factory: Callable[[], DataReader],
         *,
         indices: Sequence[int] | None = None,
         layer: str | None = None,
@@ -27,7 +27,8 @@ class AnnDataDataset(torch.utils.data.Dataset):
         """Initialize the dataset.
 
         Args:
-            reader: Unopened reader template used to create one lazy reader per worker.
+            reader_factory: Callable that constructs a new lazy reader instance.
+                Each dataset copy creates and caches its own reader on first access.
             indices: Optional subset of observation indices exposed by the dataset.
             layer: Optional layer name used for feature reads instead of ``X``.
             obs_columns: Optional subset of ``obs`` columns to attach to each sample.
@@ -35,7 +36,7 @@ class AnnDataDataset(torch.utils.data.Dataset):
             transform: Optional callable applied to each sample dictionary.
             return_index: Whether to include the original observation index in samples.
         """
-        self.reader = reader
+        self.reader_factory = reader_factory
         self.layer = layer
         self.obs_columns = list(obs_columns) if obs_columns is not None else None
         self.target_column = target_column
@@ -43,12 +44,14 @@ class AnnDataDataset(torch.utils.data.Dataset):
         self.return_index = return_index
         self._reader: DataReader | None = None
 
+        preview_reader = self.reader_factory()
         if indices is None:
             self.indices = None
-            self._length = len(reader)
+            self._length = len(preview_reader)
         else:
             self.indices = list(indices)
             self._length = len(self.indices)
+        preview_reader.close()
 
         if self.obs_columns is not None and target_column is not None:
             if target_column in self.obs_columns:
@@ -101,7 +104,7 @@ class AnnDataDataset(torch.utils.data.Dataset):
     def _get_reader(self) -> DataReader:
         """Return the current worker-local reader, creating it on first use."""
         if self._reader is None:
-            self._reader = self.reader.clone()
+            self._reader = self.reader_factory()
         return self._reader
 
     def _requested_obs_columns(self) -> list[str] | None:

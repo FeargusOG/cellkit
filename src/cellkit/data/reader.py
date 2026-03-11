@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from functools import partial
 from os import PathLike
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import anndata as ad
 import numpy as np
@@ -187,3 +188,31 @@ class ZarrReader(AnnDataReader):
     def _open(self) -> ad.AnnData:
         """Open the ``.zarr`` store lazily."""
         return ad_experimental.read_lazy(self.path) # pyright: ignore[reportCallIssue]
+
+
+def make_h5ad_reader_factory(
+    path: str | PathLike[str],
+) -> Callable[[], H5ADReader]:
+    """Return a factory that creates ``H5ADReader`` instances for one path.
+
+    Args:
+        path: Filesystem path to the ``.h5ad`` dataset.
+
+    Returns:
+        Zero-argument callable that constructs a new ``H5ADReader``.
+    """
+    return partial(H5ADReader, path)
+
+
+def make_zarr_reader_factory(
+    path: str | PathLike[str],
+) -> Callable[[], ZarrReader]:
+    """Return a factory that creates ``ZarrReader`` instances for one path.
+
+    Args:
+        path: Filesystem path to the ``.zarr`` dataset.
+
+    Returns:
+        Zero-argument callable that constructs a new ``ZarrReader``.
+    """
+    return partial(ZarrReader, path)

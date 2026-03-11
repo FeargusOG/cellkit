@@ -5,15 +5,10 @@ from cellkit.data.reader import DataReader
 
 
 class FakeReader(DataReader):
-    def __init__(self, rows, obs_rows, clone_count: int = 0, close_count: int = 0):
+    def __init__(self, rows, obs_rows, close_count: int = 0):
         self.rows = rows
         self.obs_rows = obs_rows
-        self.clone_count = clone_count
         self.close_count = close_count
-
-    def clone(self) -> "FakeReader":
-        self.clone_count += 1
-        return FakeReader(self.rows, self.obs_rows)
 
     def __len__(self) -> int:
         return len(self.rows)
@@ -47,8 +42,20 @@ class FakeReader(DataReader):
         self.close_count += 1
 
 
+class FakeReaderFactory:
+    def __init__(self, rows, obs_rows):
+        self.rows = rows
+        self.obs_rows = obs_rows
+        self.created_readers: list[FakeReader] = []
+
+    def __call__(self) -> FakeReader:
+        reader = FakeReader(self.rows, self.obs_rows)
+        self.created_readers.append(reader)
+        return reader
+
+
 def test_anndata_dataset_reads_features_and_metadata():
-    reader = FakeReader(
+    reader_factory = FakeReaderFactory(
         rows=[[1.0, 2.0], [3.0, 4.0]],
         obs_rows=[
             {"cell_type": "t", "target": 0},
@@ -56,7 +63,7 @@ def test_anndata_dataset_reads_features_and_metadata():
         ],
     )
     dataset = AnnDataDataset(
-        reader,
+        reader_factory,
         obs_columns=["cell_type"],
         target_column="target",
         return_index=True,
@@ -68,16 +75,18 @@ def test_anndata_dataset_reads_features_and_metadata():
     assert sample["obs"] == {"cell_type": "b"}
     assert sample["target"] == 1
     assert sample["index"] == 1
-    assert reader.clone_count == 1
+    assert len(reader_factory.created_readers) == 2
+    assert dataset._reader is reader_factory.created_readers[1]
+    assert reader_factory.created_readers[0].close_count == 1
 
 
 def test_anndata_dataset_supports_subsetting_and_transform():
-    reader = FakeReader(
+    reader_factory = FakeReaderFactory(
         rows=[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]],
         obs_rows=[{"target": 0}, {"target": 1}, {"target": 2}],
     )
     dataset = AnnDataDataset(
-        reader,
+        reader_factory,
         indices=[2, 0],
         target_column="target",
         transform=lambda sample: {**sample, "x": sample["x"] + 1},
@@ -90,10 +99,12 @@ def test_anndata_dataset_supports_subsetting_and_transform():
 
 
 def test_anndata_dataset_rejects_duplicate_target_column():
-    reader = FakeReader(rows=[[1.0, 2.0]], obs_rows=[{"target": 0}])
+    reader_factory = FakeReaderFactory(rows=[[1.0, 2.0]], obs_rows=[{"target": 0}])
 
     try:
-        AnnDataDataset(reader, obs_columns=["target"], target_column="target")
+        AnnDataDataset(
+            reader_factory, obs_columns=["target"], target_column="target"
+        )
     except ValueError as exc:
         assert "target_column must not also appear in obs_columns" in str(exc)
     else:
@@ -101,7 +112,7 @@ def test_anndata_dataset_rejects_duplicate_target_column():
 
 
 def test_anndata_dataset_works_with_multi_worker_dataloader():
-    reader = FakeReader(
+    reader_factory = FakeReaderFactory(
         rows=[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]],
         obs_rows=[
             {"target": 0},
@@ -110,7 +121,7 @@ def test_anndata_dataset_works_with_multi_worker_dataloader():
             {"target": 3},
         ],
     )
-    dataset = AnnDataDataset(reader, target_column="target")
+    dataset = AnnDataDataset(reader_factory, target_column="target")
     loader = torch.utils.data.DataLoader(dataset, batch_size=2, num_workers=2)
 
     batches = list(loader)
