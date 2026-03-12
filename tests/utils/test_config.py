@@ -5,12 +5,12 @@ from unittest import mock
 
 import pytest
 
-from cellkit.utils.util import build_experiment_dir
-from cellkit.utils.util import compute_short_sha
-from cellkit.utils.util import config_for_hash
-from cellkit.utils.util import setup_run_dirs
-from cellkit.utils.util import validate_run_config
-from cellkit.utils.util import write_config_json
+from cellkit.utils.config import build_experiment_dir
+from cellkit.utils.config import compute_short_sha
+from cellkit.utils.config import config_for_hash
+from cellkit.utils.config import setup_run_dirs
+from cellkit.utils.config import validate_run_config
+from cellkit.utils.config import write_config_json
 
 
 def test_validate_run_config_requires_output_dir():
@@ -82,7 +82,7 @@ def test_setup_run_dirs_creates_expected_structure(tmp_path: Path):
     }
     now = datetime(2026, 3, 12, 10, 22, 51)
 
-    with mock.patch("cellkit.utils.util.datetime") as mocked_datetime:
+    with mock.patch("cellkit.utils.config.datetime") as mocked_datetime:
         mocked_datetime.now.return_value = now
         mocked_datetime.strftime = datetime.strftime
         result = setup_run_dirs(config)
@@ -107,12 +107,12 @@ def test_setup_run_dirs_raises_if_run_dir_already_exists(tmp_path: Path):
     }
     now = datetime(2026, 3, 12, 10, 22, 51)
 
-    with mock.patch("cellkit.utils.util.datetime") as mocked_datetime:
+    with mock.patch("cellkit.utils.config.datetime") as mocked_datetime:
         mocked_datetime.now.return_value = now
         mocked_datetime.strftime = datetime.strftime
         setup_run_dirs(config)
 
-    with mock.patch("cellkit.utils.util.datetime") as mocked_datetime:
+    with mock.patch("cellkit.utils.config.datetime") as mocked_datetime:
         mocked_datetime.now.return_value = now
         mocked_datetime.strftime = datetime.strftime
         with pytest.raises(FileExistsError):
