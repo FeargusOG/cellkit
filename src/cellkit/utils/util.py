@@ -8,6 +8,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+EXP_DIR = "experiment_dir"
+RUNS_DIR = "runs_dir"
+RUN_DIR = "run_dir"
+LOG_DIR = "logs_dir"
+CONFIG_PATH = "config_path"
+
 
 def validate_run_config(config: dict[str, Any]) -> tuple[Path, str]:
     """Validate required run config fields.
@@ -45,7 +51,9 @@ def config_for_hash(config: dict[str, Any]) -> dict[str, Any]:
     excluded from the stable experiment hash.
     """
     return {
-        key: value for key, value in config.items() if key not in {"output_dir", "run_title"}
+        key: value
+        for key, value in config.items()
+        if key not in {"output_dir", "run_title"}
     }
 
 
@@ -65,9 +73,7 @@ def write_config_json(config: dict[str, Any], config_path: Path) -> None:
     config_path.write_text(json.dumps(config, indent=4, sort_keys=True) + "\n")
 
 
-def setup_run_dirs(
-    config: dict[str, Any]
-) -> dict[str, Path | str]:
+def setup_run_dirs(config: dict[str, Any]) -> dict[str, Path]:
     """Create experiment and run directory structure.
 
     Structure:
@@ -97,9 +103,9 @@ def setup_run_dirs(
     write_config_json(config, config_path)
 
     return {
-        "experiment_dir": experiment_dir,
-        "run_dir": run_dir,
-        "runs_dir": runs_dir,
-        "config_path": config_path,
-        "short_sha": short_sha,
+        EXP_DIR: experiment_dir,
+        RUNS_DIR: runs_dir,
+        RUN_DIR: run_dir,
+        LOG_DIR: run_dir / "logs",
+        CONFIG_PATH: config_path
     }

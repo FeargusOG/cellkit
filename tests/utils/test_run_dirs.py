@@ -91,7 +91,6 @@ def test_setup_run_dirs_creates_expected_structure(tmp_path: Path):
     expected_experiment_dir = tmp_path / "outputs" / f"{expected_short_sha}_demo"
     expected_run_dir = expected_experiment_dir / "runs" / "2026-03-12_10-22-51"
 
-    assert result["short_sha"] == expected_short_sha
     assert result["experiment_dir"] == expected_experiment_dir
     assert result["runs_dir"] == expected_experiment_dir / "runs"
     assert result["run_dir"] == expected_run_dir
