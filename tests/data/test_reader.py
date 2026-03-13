@@ -3,6 +3,7 @@ import pickle
 from typing import Any
 from unittest import mock
 
+import anndata as ad
 import numpy as np
 import pandas as pd
 import pytest
@@ -34,6 +35,17 @@ class FakeAnnData:
 class BadRowMatrix:
     def __getitem__(self, index):
         return np.arange(6, dtype=np.float32).reshape(2, 3)
+
+
+def make_real_adata() -> ad.AnnData:
+    return ad.AnnData(
+        X=np.arange(12, dtype=np.float32).reshape(3, 4),
+        obs=pd.DataFrame(
+            {"cell_type": ["a", "b", "c"], "batch": [0, 1, 1]},
+            index=["cell0", "cell1", "cell2"],
+        ),
+        var=pd.DataFrame(index=["gene_b", "gene_a", "gene_c", "gene_d"]),
+    )
 
 
 def test_h5ad_reader_uses_backed_mode_and_reads_rows():
@@ -158,3 +170,57 @@ def test_make_zarr_reader_factory_creates_new_readers():
     assert first is not second
     assert first.path == Path("dataset.zarr")
     assert second.path == Path("dataset.zarr")
+
+
+def test_h5ad_reader_reads_real_backed_file(tmp_path: Path):
+    adata = make_real_adata()
+    adata.layers["counts"] = sparse.csr_matrix(
+        np.arange(12, dtype=np.float32).reshape(3, 4)
+    )
+    data_path = tmp_path / "real.h5ad"
+    adata.write_h5ad(data_path)
+
+    reader = H5ADReader(data_path)
+
+    assert len(reader) == 3
+    assert reader.shape == (3, 4)
+    assert reader.var_names == ["gene_b", "gene_a", "gene_c", "gene_d"]
+    assert sorted(reader.obs_columns) == ["batch", "cell_type"]
+    assert reader.obs_names == ["cell0", "cell1", "cell2"]
+    assert reader.layer_names == ["counts"]
+    np.testing.assert_array_equal(reader.read_x(1), np.array([4, 5, 6, 7], dtype=np.float32))
+    np.testing.assert_array_equal(
+        reader.read_x(2, layer="counts"),
+        np.array([8, 9, 10, 11], dtype=np.float32),
+    )
+    assert reader.read_obs(1, columns=["batch", "cell_type"]) == {
+        "batch": 1,
+        "cell_type": "b",
+    }
+
+    reader.close()
+    assert reader._adata is None
+
+
+def test_zarr_reader_reads_real_lazy_store(tmp_path: Path):
+    pytest.importorskip("xarray")
+
+    adata = make_real_adata()
+    adata.layers["counts"] = np.arange(12, dtype=np.float32).reshape(3, 4)
+    data_path = tmp_path / "real.zarr"
+    adata.write_zarr(data_path)
+
+    reader = ZarrReader(data_path)
+
+    assert len(reader) == 3
+    assert reader.shape == (3, 4)
+    assert reader.var_names == ["gene_b", "gene_a", "gene_c", "gene_d"]
+    assert sorted(reader.obs_columns) == ["batch", "cell_type"]
+    assert reader.obs_names == ["cell0", "cell1", "cell2"]
+    assert reader.layer_names == ["counts"]
+    np.testing.assert_array_equal(reader.read_x(0), np.array([0, 1, 2, 3], dtype=np.float32))
+    np.testing.assert_array_equal(
+        reader.read_x(2, layer="counts"),
+        np.array([8, 9, 10, 11], dtype=np.float32),
+    )
+    assert reader.read_obs(2, columns=["cell_type"]) == {"cell_type": "c"}

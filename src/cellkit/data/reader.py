@@ -6,10 +6,11 @@ from abc import ABC, abstractmethod
 from functools import partial
 from os import PathLike
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 import anndata as ad
 import numpy as np
+import pandas as pd
 from anndata import experimental as ad_experimental
 
 
@@ -146,20 +147,19 @@ class AnnDataReader(DataReader, ABC):
             Dictionary mapping column names to scalar values.
         """
         obs = self._ensure_open().obs
+        obs_row = obs.iloc[[index]]
+
+        to_memory = getattr(obs_row, "to_memory", None)
+        if callable(to_memory):
+            obs_row = to_memory()
+
+        obs_row = cast(pd.DataFrame, obs_row)
+        row_values = np.asarray(obs_row.iloc[0]).reshape(-1)
+        column_names = [str(column) for column in obs_row.columns]
+        row_dict = dict(zip(column_names, row_values, strict=True))
         if columns is None:
-            selected_obs = obs
-        else:
-            selected_obs = obs[columns]
-
-        obs_row = selected_obs.iloc[index]
-
-        to_pandas = getattr(obs_row, "to_pandas", None)
-        if callable(to_pandas):
-            obs_row = to_pandas()
-
-        values = np.asarray(obs_row).reshape(-1)
-        column_names = [str(column) for column in selected_obs.columns]
-        return dict(zip(column_names, values, strict=True))
+            return row_dict
+        return {column: row_dict[column] for column in columns}
 
     def close(self) -> None:
         """Close any open backing store if the current AnnData object exposes one."""
