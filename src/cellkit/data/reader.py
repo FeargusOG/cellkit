@@ -120,6 +120,9 @@ class AnnDataReader(DataReader, ABC):
         to_memory = getattr(row, "to_memory", None)
         if callable(to_memory):
             row = to_memory()
+        compute = getattr(row, "compute", None)
+        if callable(compute):
+            row = compute()
         to_array = getattr(row, "toarray", None)
         if callable(to_array):
             row = to_array()
