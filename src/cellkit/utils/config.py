@@ -44,7 +44,9 @@ def write_config_json(config: dict[str, Any], config_path: Path) -> None:
     config_path.write_text(json.dumps(config, indent=4, sort_keys=True) + "\n")
 
 
-def setup_run_dirs(config: dict[str, Any], output_dir: str, run_title: str) -> dict[str, Path]:
+def setup_run_dirs(
+    config_json: dict[str, Any], output_dir: str, run_title: str
+) -> dict[str, Path]:
     """Create experiment and run directory structure.
 
     Structure:
@@ -61,7 +63,7 @@ def setup_run_dirs(config: dict[str, Any], output_dir: str, run_title: str) -> d
     Returns:
         Dictionary containing created paths and the computed short hash.
     """
-    short_sha = compute_short_sha(config)
+    short_sha = compute_short_sha(config_json)
 
     experiment_dir = build_experiment_dir(Path(output_dir), short_sha, run_title)
     runs_dir = experiment_dir / "runs"
@@ -70,12 +72,12 @@ def setup_run_dirs(config: dict[str, Any], output_dir: str, run_title: str) -> d
     run_dir.mkdir(parents=True, exist_ok=False)
 
     config_path = experiment_dir / "config.json"
-    write_config_json(config, config_path)
+    write_config_json(config_json, config_path)
 
     return {
         EXP_DIR: experiment_dir,
         RUNS_DIR: runs_dir,
         RUN_DIR: run_dir,
         LOG_DIR: run_dir / "logs",
-        CONFIG_PATH: config_path
+        CONFIG_PATH: config_path,
     }
