@@ -9,26 +9,7 @@ from cellkit.utils.config import build_experiment_dir
 from cellkit.utils.config import compute_short_sha
 from cellkit.utils.config import config_for_hash
 from cellkit.utils.config import setup_run_dirs
-from cellkit.utils.config import validate_run_config
 from cellkit.utils.config import write_config_json
-
-
-def test_validate_run_config_requires_output_dir():
-    with pytest.raises(ValueError, match="config must contain 'output_dir'"):
-        validate_run_config({"run_title": "demo"})
-
-
-def test_validate_run_config_requires_run_title():
-    with pytest.raises(ValueError, match="config must contain 'run_title'"):
-        validate_run_config({"output_dir": "runs"})
-
-
-def test_validate_run_config_rejects_empty_required_fields():
-    with pytest.raises(ValueError, match="'output_dir' must not be empty"):
-        validate_run_config({"output_dir": "", "run_title": "demo"})
-
-    with pytest.raises(ValueError, match="'run_title' must not be empty"):
-        validate_run_config({"output_dir": "runs", "run_title": "   "})
 
 
 def test_config_for_hash_excludes_output_dir_and_run_title():
@@ -85,7 +66,7 @@ def test_setup_run_dirs_creates_expected_structure(tmp_path: Path):
     with mock.patch("cellkit.utils.config.datetime") as mocked_datetime:
         mocked_datetime.now.return_value = now
         mocked_datetime.strftime = datetime.strftime
-        result = setup_run_dirs(config)
+        result = setup_run_dirs(config, config["output_dir"], config["run_title"])
 
     expected_short_sha = compute_short_sha(config)
     expected_experiment_dir = tmp_path / "outputs" / f"{expected_short_sha}_demo"
@@ -110,10 +91,10 @@ def test_setup_run_dirs_raises_if_run_dir_already_exists(tmp_path: Path):
     with mock.patch("cellkit.utils.config.datetime") as mocked_datetime:
         mocked_datetime.now.return_value = now
         mocked_datetime.strftime = datetime.strftime
-        setup_run_dirs(config)
+        setup_run_dirs(config, config["output_dir"], config["run_title"])
 
     with mock.patch("cellkit.utils.config.datetime") as mocked_datetime:
         mocked_datetime.now.return_value = now
         mocked_datetime.strftime = datetime.strftime
         with pytest.raises(FileExistsError):
-            setup_run_dirs(config)
+            setup_run_dirs(config, config["output_dir"], config["run_title"])

@@ -15,35 +15,6 @@ LOG_DIR = "logs_dir"
 CONFIG_PATH = "config_path"
 
 
-def validate_run_config(config: dict[str, Any]) -> tuple[Path, str]:
-    """Validate required run config fields.
-
-    Args:
-        config: Run configuration dictionary.
-
-    Returns:
-        Tuple of ``(output_dir, run_title)``.
-
-    Raises:
-        ValueError: If required fields are missing or empty.
-    """
-    if "output_dir" not in config:
-        raise ValueError("config must contain 'output_dir'")
-    if "run_title" not in config:
-        raise ValueError("config must contain 'run_title'")
-
-    output_dir_value = str(config["output_dir"]).strip()
-    run_title = str(config["run_title"]).strip()
-
-    if not output_dir_value:
-        raise ValueError("'output_dir' must not be empty")
-    if not run_title:
-        raise ValueError("'run_title' must not be empty")
-
-    output_dir = Path(output_dir_value)
-    return output_dir, run_title
-
-
 def config_for_hash(config: dict[str, Any]) -> dict[str, Any]:
     """Return the subset of config used to identify an experiment.
 
@@ -73,7 +44,7 @@ def write_config_json(config: dict[str, Any], config_path: Path) -> None:
     config_path.write_text(json.dumps(config, indent=4, sort_keys=True) + "\n")
 
 
-def setup_run_dirs(config: dict[str, Any]) -> dict[str, Path]:
+def setup_run_dirs(config: dict[str, Any], output_dir: str, run_title: str) -> dict[str, Path]:
     """Create experiment and run directory structure.
 
     Structure:
@@ -90,10 +61,9 @@ def setup_run_dirs(config: dict[str, Any]) -> dict[str, Path]:
     Returns:
         Dictionary containing created paths and the computed short hash.
     """
-    output_dir, run_title = validate_run_config(config)
     short_sha = compute_short_sha(config)
 
-    experiment_dir = build_experiment_dir(output_dir, short_sha, run_title)
+    experiment_dir = build_experiment_dir(Path(output_dir), short_sha, run_title)
     runs_dir = experiment_dir / "runs"
     run_dir = runs_dir / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
