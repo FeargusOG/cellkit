@@ -34,9 +34,14 @@ def compute_short_sha(config: dict[str, Any], length: int = 7) -> str:
     return hashlib.sha1(cfg_str.encode("utf-8")).hexdigest()[:length]
 
 
-def build_experiment_dir(output_dir: Path, short_sha: str, run_title: str) -> Path:
+def build_experiment_dir(output_dir: Path, short_sha: str) -> Path:
     """Return the experiment directory path for one config."""
-    return output_dir / f"{short_sha}_{run_title}"
+    return output_dir / short_sha
+
+
+def build_run_dir_name(timestamp: str, run_title: str) -> str:
+    """Return the run directory name for one timestamped run."""
+    return f"{timestamp}_{run_title}"
 
 
 def write_config_json(config: dict[str, Any], config_path: Path) -> None:
@@ -45,16 +50,16 @@ def write_config_json(config: dict[str, Any], config_path: Path) -> None:
 
 
 def setup_run_dirs(
-    config_json: dict[str, Any], output_dir: str, run_title: str
+    train_config_json: dict[str, Any], output_dir: str, run_title: str
 ) -> dict[str, Path]:
     """Create experiment and run directory structure.
 
     Structure:
         <output_dir>/
-            <short_sha>_<run_title>/
-                config.json
+            <short_sha>/
+                train_config.json
                 runs/
-                    <timestamp>/
+                    <timestamp>_<run_title>/
 
     Args:
         config: Run configuration dictionary. Must contain ``output_dir`` and
@@ -63,21 +68,22 @@ def setup_run_dirs(
     Returns:
         Dictionary containing created paths and the computed short hash.
     """
-    short_sha = compute_short_sha(config_json)
+    short_sha = compute_short_sha(train_config_json)
 
-    experiment_dir = build_experiment_dir(Path(output_dir), short_sha, run_title)
+    experiment_dir = build_experiment_dir(Path(output_dir), short_sha)
     runs_dir = experiment_dir / "runs"
-    run_dir = runs_dir / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    run_dir = runs_dir / build_run_dir_name(timestamp, run_title)
 
     run_dir.mkdir(parents=True, exist_ok=False)
 
-    config_path = experiment_dir / "config.json"
-    write_config_json(config_json, config_path)
+    train_config_path = experiment_dir / "train_config.json"
+    write_config_json(train_config_json, train_config_path)
 
     return {
         EXP_DIR: experiment_dir,
         RUNS_DIR: runs_dir,
         RUN_DIR: run_dir,
         LOG_DIR: run_dir / "logs",
-        CONFIG_PATH: config_path,
+        CONFIG_PATH: train_config_path,
     }

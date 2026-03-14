@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 
 from cellkit.utils.config import build_experiment_dir
+from cellkit.utils.config import build_run_dir_name
 from cellkit.utils.config import compute_short_sha
 from cellkit.utils.config import config_for_hash
 from cellkit.utils.config import setup_run_dirs
@@ -40,9 +41,14 @@ def test_compute_short_sha_ignores_output_location_metadata():
     assert compute_short_sha(config_a) == compute_short_sha(config_b)
 
 
-def test_build_experiment_dir_uses_short_sha_and_run_title():
-    experiment_dir = build_experiment_dir(Path("runs"), "abc1234", "demo")
-    assert experiment_dir == Path("runs/abc1234_demo")
+def test_build_experiment_dir_uses_short_sha_only():
+    experiment_dir = build_experiment_dir(Path("runs"), "abc1234")
+    assert experiment_dir == Path("runs/abc1234")
+
+
+def test_build_run_dir_name_uses_timestamp_and_run_title():
+    run_dir_name = build_run_dir_name("2026-03-12_10-22-51", "demo")
+    assert run_dir_name == "2026-03-12_10-22-51_demo"
 
 
 def test_write_config_json_writes_sorted_json_with_newline(tmp_path: Path):
@@ -69,15 +75,15 @@ def test_setup_run_dirs_creates_expected_structure(tmp_path: Path):
         result = setup_run_dirs(config, config["output_dir"], config["run_title"])
 
     expected_short_sha = compute_short_sha(config)
-    expected_experiment_dir = tmp_path / "outputs" / f"{expected_short_sha}_demo"
-    expected_run_dir = expected_experiment_dir / "runs" / "2026-03-12_10-22-51"
+    expected_experiment_dir = tmp_path / "outputs" / expected_short_sha
+    expected_run_dir = expected_experiment_dir / "runs" / "2026-03-12_10-22-51_demo"
 
     assert result["experiment_dir"] == expected_experiment_dir
     assert result["runs_dir"] == expected_experiment_dir / "runs"
     assert result["run_dir"] == expected_run_dir
-    assert result["config_path"] == expected_experiment_dir / "config.json"
+    assert result["config_path"] == expected_experiment_dir / "train_config.json"
     assert expected_run_dir.is_dir()
-    assert json.loads((expected_experiment_dir / "config.json").read_text()) == config
+    assert json.loads((expected_experiment_dir / "train_config.json").read_text()) == config
 
 
 def test_setup_run_dirs_raises_if_run_dir_already_exists(tmp_path: Path):
