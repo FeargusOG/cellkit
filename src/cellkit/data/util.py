@@ -1,5 +1,46 @@
+from collections.abc import Sized
+from typing import cast
+
+import torch
+from torch.utils.data import Dataset, Subset, random_split
 from sklearn.model_selection import train_test_split
 import scanpy as sc
+
+
+def train_eval_split(
+    dataset: Dataset,
+    eval_frac: float,
+    seed: int | None = None,
+) -> tuple[Subset, Subset]:
+    """Split a dataset into train and eval subsets.
+
+    Args:
+        dataset: Dataset to split.
+        eval_frac: Fraction of samples assigned to the eval split.
+        seed: Optional seed for deterministic splitting.
+
+    Returns:
+        Tuple of ``(train_dataset, eval_dataset)`` subsets.
+    """
+    if eval_frac <= 0 or eval_frac >= 1:
+        raise ValueError("eval_frac must be between 0 and 1")
+
+    dataset_size = len(cast(Sized, dataset))
+    eval_size = max(1, int(dataset_size * eval_frac))
+    train_size = dataset_size - eval_size
+    if train_size <= 0:
+        raise ValueError("eval_frac leaves no samples for training")
+
+    generator = None
+    if seed is not None:
+        generator = torch.Generator().manual_seed(seed)
+
+    train_dataset, eval_dataset = random_split(
+        dataset,
+        [train_size, eval_size],
+        generator=generator,
+    )
+    return train_dataset, eval_dataset
 
 
 def stratified_subsample_adata(

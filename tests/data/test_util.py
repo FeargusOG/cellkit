@@ -2,9 +2,49 @@ import numpy as np
 import anndata as ad
 import pytest
 import scanpy as sc
+import torch
 
+from cellkit.data.util import train_eval_split
 from cellkit.data.util import stratified_subsample_adata
 from cellkit.data.util import filter_cells_and_genes
+
+
+class RangeDataset(torch.utils.data.Dataset):
+    def __init__(self, size: int):
+        self.size = size
+
+    def __len__(self) -> int:
+        return self.size
+
+    def __getitem__(self, index: int) -> int:
+        return index
+
+
+def test_train_eval_split_returns_expected_lengths():
+    dataset = RangeDataset(10)
+
+    train_dataset, eval_dataset = train_eval_split(dataset, eval_frac=0.2, seed=0)
+
+    assert len(train_dataset) == 8
+    assert len(eval_dataset) == 2
+
+
+def test_train_eval_split_is_reproducible_with_seed():
+    dataset = RangeDataset(10)
+
+    first_train, first_eval = train_eval_split(dataset, eval_frac=0.2, seed=123)
+    second_train, second_eval = train_eval_split(dataset, eval_frac=0.2, seed=123)
+
+    assert first_train.indices == second_train.indices
+    assert first_eval.indices == second_eval.indices
+
+
+@pytest.mark.parametrize("eval_frac", [0.0, 1.0, -0.1, 1.1])
+def test_train_eval_split_rejects_invalid_eval_frac(eval_frac: float):
+    dataset = RangeDataset(10)
+
+    with pytest.raises(ValueError, match="eval_frac must be between 0 and 1"):
+        train_eval_split(dataset, eval_frac=eval_frac)
 
 
 def test_stratified_subsample_adata_basic():
