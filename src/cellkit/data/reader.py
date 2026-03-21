@@ -229,3 +229,23 @@ def make_zarr_reader_factory(
         Zero-argument callable that constructs a new ``ZarrReader``.
     """
     return partial(ZarrReader, path)
+
+
+def make_reader_factory(
+    path: str | PathLike[str],
+    data_format: str,
+) -> Callable[[], DataReader]:
+    """Return a reader factory for a supported AnnData storage format.
+
+    Args:
+        path: Filesystem path to the dataset.
+        data_format: Storage format identifier, currently ``"h5ad"`` or ``"zarr"``.
+
+    Returns:
+        Zero-argument callable that constructs a new reader for the requested format.
+    """
+    if data_format == "zarr":
+        return make_zarr_reader_factory(path)
+    if data_format == "h5ad":
+        return make_h5ad_reader_factory(path)
+    raise ValueError(f"Unsupported data_format '{data_format}'")

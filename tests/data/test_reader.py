@@ -12,6 +12,7 @@ from scipy import sparse
 from cellkit.data.reader import H5ADReader
 from cellkit.data.reader import ZarrReader
 from cellkit.data.reader import make_h5ad_reader_factory
+from cellkit.data.reader import make_reader_factory
 from cellkit.data.reader import make_zarr_reader_factory
 
 
@@ -170,6 +171,37 @@ def test_make_zarr_reader_factory_creates_new_readers():
     assert first is not second
     assert first.path == Path("dataset.zarr")
     assert second.path == Path("dataset.zarr")
+
+
+def test_make_reader_factory_supports_h5ad():
+    factory = make_reader_factory("dataset.h5ad", "h5ad")
+
+    first = factory()
+    second = factory()
+
+    assert isinstance(first, H5ADReader)
+    assert isinstance(second, H5ADReader)
+    assert first is not second
+    assert first.path == Path("dataset.h5ad")
+    assert second.path == Path("dataset.h5ad")
+
+
+def test_make_reader_factory_supports_zarr():
+    factory = make_reader_factory("dataset.zarr", "zarr")
+
+    first = factory()
+    second = factory()
+
+    assert isinstance(first, ZarrReader)
+    assert isinstance(second, ZarrReader)
+    assert first is not second
+    assert first.path == Path("dataset.zarr")
+    assert second.path == Path("dataset.zarr")
+
+
+def test_make_reader_factory_rejects_unknown_format():
+    with pytest.raises(ValueError, match="Unsupported data_format"):
+        make_reader_factory("dataset.foo", "foo")
 
 
 def test_h5ad_reader_reads_real_backed_file(tmp_path: Path):
