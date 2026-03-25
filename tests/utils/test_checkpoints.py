@@ -1,12 +1,14 @@
 import json
 from pathlib import Path
 
+import pytest
 import torch
 
 from cellkit.utils.checkpoints import (
     BEST_CHECKPOINT_NAME,
     LAST_CHECKPOINT_NAME,
     checkpoint_paths,
+    load_checkpoint,
     load_checkpoint_metadata,
     save_checkpoint,
 )
@@ -70,6 +72,7 @@ def test_save_checkpoint_writes_last_best_and_metadata(tmp_path):
     payload = torch.load(paths["last"], map_location="cpu")
     assert payload["epoch"] == 1
     assert payload["global_step"] == 5
+    assert payload["best_eval_loss"] == 0.6
     assert payload["train_config"] == {"lr": 1e-3}
     assert payload["run_config"] == {"epochs": 2}
 
@@ -121,3 +124,29 @@ def test_save_checkpoint_only_updates_best_when_eval_improves(tmp_path):
 
     best_payload = torch.load(paths["best"], map_location="cpu")
     assert best_payload["epoch"] == 1
+    assert best_payload["best_eval_loss"] == 0.6
+
+
+def test_load_checkpoint_reads_payload_from_pt_file(tmp_path):
+    checkpoint_path = tmp_path / "checkpoint.pt"
+    torch.save({"epoch": 3, "best_eval_loss": 0.4}, checkpoint_path)
+
+    payload = load_checkpoint(checkpoint_path)
+
+    assert payload["epoch"] == 3
+    assert payload["best_eval_loss"] == 0.4
+
+
+def test_load_checkpoint_rejects_non_pt_paths(tmp_path):
+    checkpoint_path = tmp_path / "checkpoint.bin"
+    checkpoint_path.write_text("x")
+
+    with pytest.raises(ValueError, match="must point to a .pt checkpoint file"):
+        load_checkpoint(checkpoint_path)
+
+
+def test_load_checkpoint_rejects_missing_file(tmp_path):
+    checkpoint_path = tmp_path / "missing.pt"
+
+    with pytest.raises(FileNotFoundError, match="Checkpoint file not found"):
+        load_checkpoint(checkpoint_path)

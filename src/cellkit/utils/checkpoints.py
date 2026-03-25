@@ -42,6 +42,10 @@ def save_checkpoint(
     checkpoint_dir = paths["dir"]
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
+    next_best_eval_loss = eval_loss
+    if best_eval_loss is not None:
+        next_best_eval_loss = min(best_eval_loss, eval_loss)
+
     last_record = _build_checkpoint_record(
         filename=LAST_CHECKPOINT_NAME,
         epoch=epoch,
@@ -57,6 +61,7 @@ def save_checkpoint(
         scheduler=scheduler,
         path=paths["last"],
         record=last_record,
+        best_eval_loss=next_best_eval_loss,
         train_config=train_config,
         run_config=run_config,
     )
@@ -64,7 +69,6 @@ def save_checkpoint(
     metadata = load_checkpoint_metadata(paths["metadata"])
     metadata["last"] = last_record
 
-    next_best_eval_loss = best_eval_loss
     if best_eval_loss is None or eval_loss < best_eval_loss:
         best_record = _build_checkpoint_record(
             filename=BEST_CHECKPOINT_NAME,
@@ -81,18 +85,26 @@ def save_checkpoint(
             scheduler=scheduler,
             path=paths["best"],
             record=best_record,
+            best_eval_loss=next_best_eval_loss,
             train_config=train_config,
             run_config=run_config,
         )
         metadata["best"] = best_record
-        next_best_eval_loss = eval_loss
 
     if accelerator.is_main_process:
         paths["metadata"].write_text(json.dumps(metadata, indent=4, sort_keys=True) + "\n")
     accelerator.wait_for_everyone()
 
-    assert next_best_eval_loss is not None
     return next_best_eval_loss
+
+
+def load_checkpoint(checkpoint_path: str | Path) -> dict[str, Any]:
+    checkpoint = Path(checkpoint_path)
+    if checkpoint.suffix != ".pt":
+        raise ValueError("resume_from_checkpoint must point to a .pt checkpoint file")
+    if not checkpoint.is_file():
+        raise FileNotFoundError(f"Checkpoint file not found: {checkpoint}")
+    return torch.load(checkpoint, map_location="cpu")
 
 
 def load_checkpoint_metadata(metadata_path: Path) -> dict[str, Any]:
@@ -128,6 +140,7 @@ def _save_checkpoint_payload(
     scheduler: torch.optim.lr_scheduler.LRScheduler,
     path: Path,
     record: dict[str, Any],
+    best_eval_loss: float,
     train_config: dict[str, Any],
     run_config: dict[str, Any],
 ) -> None:
@@ -139,6 +152,7 @@ def _save_checkpoint_payload(
         "global_step": record["global_step"],
         "train_loss": record["train_loss"],
         "eval_loss": record["eval_loss"],
+        "best_eval_loss": best_eval_loss,
         "is_best": record["is_best"],
         "train_config": train_config,
         "run_config": run_config,
