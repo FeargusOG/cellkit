@@ -1,4 +1,5 @@
 import json
+import queue
 
 import torch
 
@@ -67,14 +68,7 @@ def test_async_prediction_logger_drops_messages_when_queue_is_full(tmp_path):
         queue_size=1,
         buffer_size=10,
     )
-    logger.queue.put_nowait(
-        {
-            "epoch": 0,
-            "batch": 0,
-            "sample_count": 1,
-            "samples": [{"gene_id": 3, "pred": 0.1, "true": 1.0}],
-        }
-    )
+    logger.queue.put_nowait = lambda _: (_ for _ in ()).throw(queue.Full())  # type: ignore[method-assign]
 
     logger.log_batch(
         epoch=1,
