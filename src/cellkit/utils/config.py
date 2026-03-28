@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,9 @@ RUNS_DIR = "runs_dir"
 RUN_DIR = "run_dir"
 LOG_DIR = "logs_dir"
 CONFIG_PATH = "config_path"
+RUN_CONFIG_PATH = "run_config_path"
+FLAT_TRAIN_CONFIG_PATH = "flat_train_config_path"
+MANIFEST_PATH = "manifest_path"
 
 
 def config_for_hash(config: dict[str, Any]) -> dict[str, Any]:
@@ -47,6 +51,53 @@ def build_run_dir_name(timestamp: str, run_title: str) -> str:
 def write_config_json(config: dict[str, Any], config_path: Path) -> None:
     """Write the canonical config JSON for an experiment."""
     config_path.write_text(json.dumps(config, indent=4, sort_keys=True) + "\n")
+
+
+def write_run_artifacts(
+    *,
+    run_dir: Path,
+    run_config: dict[str, Any],
+    flat_train_config: dict[str, Any],
+    manifest: dict[str, Any],
+) -> dict[str, Path]:
+    """Write per-run plain JSON artifacts for inspection and reproducibility."""
+    run_config_path = run_dir / "run_config.json"
+    flat_train_config_path = run_dir / "flat_train_config.json"
+    manifest_path = run_dir / "manifest.json"
+
+    write_config_json(run_config, run_config_path)
+    write_config_json(flat_train_config, flat_train_config_path)
+    write_config_json(manifest, manifest_path)
+
+    return {
+        RUN_CONFIG_PATH: run_config_path,
+        FLAT_TRAIN_CONFIG_PATH: flat_train_config_path,
+        MANIFEST_PATH: manifest_path,
+    }
+
+
+def sha1_file(path: str | Path) -> str:
+    """Return the SHA1 digest of a file's contents."""
+    digest = hashlib.sha1()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(8192), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def get_git_commit(repo_dir: str | Path) -> str | None:
+    """Return the current git commit SHA for ``repo_dir``, if available."""
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo_dir,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    sha = result.stdout.strip()
+    return sha or None
 
 
 def setup_run_dirs(
