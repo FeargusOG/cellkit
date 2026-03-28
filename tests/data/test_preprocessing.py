@@ -11,6 +11,7 @@ from cellkit.data.preprocessing import (
     drop_cells_with_no_expression,
     filter_genes,
     log1p_transform,
+    preprocess_anndata,
     normalize_total,
     read_anndata,
     write_anndata,
@@ -126,3 +127,35 @@ def test_read_and_write_anndata_round_trip_h5ad(tmp_path):
 
     np.testing.assert_array_equal(loaded.X, adata.X)
     assert list(loaded.var_names) == ["GENE_A", "GENE_B"]
+
+
+def test_preprocess_anndata_applies_pipeline_and_annotations():
+    adata = ad.AnnData(
+        X=np.array(
+            [
+                [0.0, 2.0, 4.0],
+                [0.0, 0.0, 0.0],
+            ],
+            dtype=np.float32,
+        )
+    )
+    adata.var_names = ["GENE_A", "GENE_B", "GENE_C"]
+
+    processed = preprocess_anndata(
+        adata,
+        genes_to_keep={"GENE_B", "GENE_C"},
+        drop_zero_expression_cells=True,
+        target_sum=6.0,
+        log1p=True,
+        n_bins=3,
+    )
+
+    assert processed.n_obs == 1
+    assert list(processed.var_names) == ["GENE_B", "GENE_C"]
+    np.testing.assert_array_equal(processed.X, np.array([[1, 3]], dtype=np.uint16))
+    assert processed.uns[UNS_PREPROCESSING] == {
+        "normalized": True,
+        "log1p": True,
+        "n_bins": 3,
+        "dropped_zero_expression_cells": True,
+    }

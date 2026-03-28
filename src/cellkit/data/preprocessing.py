@@ -110,6 +110,40 @@ def annotate_preprocessing(
     return adata
 
 
+def preprocess_anndata(
+    adata: ad.AnnData,
+    *,
+    genes_to_keep: Collection[str] | None = None,
+    drop_zero_expression_cells: bool = True,
+    target_sum: float | None = None,
+    log1p: bool = False,
+    n_bins: int | None = None,
+) -> ad.AnnData:
+    if genes_to_keep is not None:
+        adata = filter_genes(adata, genes_to_keep)
+
+    if drop_zero_expression_cells:
+        adata = drop_cells_with_no_expression(adata)
+
+    normalized = target_sum is not None
+    if normalized:
+        adata = normalize_total(adata, target_sum=target_sum)
+
+    if log1p:
+        adata = log1p_transform(adata)
+
+    if n_bins is not None:
+        adata = bin_expression(adata, n_bins=n_bins)
+
+    return annotate_preprocessing(
+        adata,
+        normalized=normalized,
+        log1p_applied=log1p,
+        n_bins=n_bins,
+        dropped_zero_expression_cells=drop_zero_expression_cells,
+    )
+
+
 def _row_sums(x) -> np.ndarray:
     if sparse.issparse(x):
         return np.asarray(x.sum(axis=1)).reshape(-1).astype(np.float32)

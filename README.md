@@ -152,6 +152,9 @@ The repo also contains a few small utility scripts:
 
 - [scripts/explore_dataset.py](/Users/feargusogorman/workspace/medai/FeargusOG/cellkit/scripts/explore_dataset.py)
   Inspect an AnnData dataset.
+- [scripts/preprocess_dataset.py](/Users/feargusogorman/workspace/medai/FeargusOG/cellkit/scripts/preprocess_dataset.py)
+  Apply generic AnnData preprocessing steps such as optional feature filtering, zero-cell dropping,
+  normalization, `log1p`, and binning.
 - [scripts/subsample_dataset.py](/Users/feargusogorman/workspace/medai/FeargusOG/cellkit/scripts/subsample_dataset.py)
   Create a smaller stratified subset.
 
@@ -159,6 +162,7 @@ Example:
 
 ```bash
 uv run python scripts/explore_dataset.py --adata data/CD45.h5ad --rows cell_subset cell_subtype_3
+uv run python scripts/preprocess_dataset.py --input-data data/CD45.h5ad --output-data data/CD45.preprocessed.h5ad --genes-path genes.txt --target-sum 10000 --log1p --n-bins 51
 uv run python scripts/subsample_dataset.py --adata data/CD45.h5ad --out data/CD45.subsampled.h5ad --frac 0.1 --strata-cols cell_subtype_3
 ```
 
