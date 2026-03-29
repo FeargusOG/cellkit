@@ -1,6 +1,7 @@
 import torch
 from typing import cast
 
+from cellkit.model.embedding import PositionalEmbedding
 from cellkit.model.embedding import ScalarEmbedding
 from cellkit.model.embedding import TokenEmbedding
 
@@ -38,6 +39,41 @@ def test_token_embedding_backward_skips_padding_idx_gradient():
     grad = embedding.weight.grad
     assert grad is not None
     assert torch.allclose(grad[0], torch.zeros_like(grad[0]))
+
+
+def test_positional_embedding_forward_shape_dtype_and_finite_values():
+    model = PositionalEmbedding(max_positions=16, d_model=8, dropout=0.0)
+    model.eval()
+    x = torch.tensor([[0, 1, 2], [3, 4, 5]], dtype=torch.long)
+
+    out = model(x)
+
+    assert out.shape == (2, 3, 8)
+    assert out.dtype == torch.float32
+    assert torch.isfinite(out).all()
+
+
+def test_positional_embedding_same_positions_match_in_eval_mode():
+    model = PositionalEmbedding(max_positions=8, d_model=6, dropout=0.0)
+    model.eval()
+    x = torch.tensor([[0, 1, 2], [0, 1, 2]], dtype=torch.long)
+
+    out = model(x)
+
+    assert torch.allclose(out[0], out[1])
+
+
+def test_positional_embedding_backward_pass():
+    model = PositionalEmbedding(max_positions=10, d_model=4, dropout=0.0)
+    x = torch.tensor([[0, 1, 2], [3, 4, 5]], dtype=torch.long)
+
+    out = model(x)
+    out.sum().backward()
+
+    embedding = cast(torch.nn.Embedding, model.layers[0])
+    grad = embedding.weight.grad
+    assert grad is not None
+    assert torch.isfinite(grad).all()
 
 
 def test_scalar_embedding_forward_shape_dtype_and_finite_values():

@@ -1,4 +1,4 @@
-"""Embedding layers used to encode token and scalar model inputs."""
+"""Embedding layers used to encode token, position, and scalar model inputs."""
 
 import torch
 
@@ -36,6 +36,42 @@ class TokenEmbedding(torch.nn.Module):
 
         Returns:
             Tensor of embedded token representations with shape ``(batch, seq_len, d_model)``.
+        """
+        return self.layers(x)
+
+
+class PositionalEmbedding(torch.nn.Module):
+    """Embed integer position ids into the model hidden space."""
+
+    def __init__(
+        self,
+        max_positions: int,
+        d_model: int,
+        dropout: float,
+    ):
+        """Initialize the learned positional embedding stack.
+
+        Args:
+            max_positions: Maximum number of supported positions.
+            d_model: Width of the embedding vectors and output hidden states.
+            dropout: Dropout probability applied after the embedding lookup.
+        """
+        super().__init__()
+        self.layers = torch.nn.Sequential(
+            torch.nn.Embedding(max_positions, d_model),
+            torch.nn.Dropout(p=dropout),
+            torch.nn.LayerNorm(d_model),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Map position ids to hidden states.
+
+        Args:
+            x: Tensor of position ids with shape ``(batch, seq_len)``.
+
+        Returns:
+            Tensor of embedded position representations with shape
+            ``(batch, seq_len, d_model)``.
         """
         return self.layers(x)
 
